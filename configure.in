@@ -16,10 +16,20 @@ AC_CHECK_LIB(Xext, main, LIBS="$LIBS -lXext", [], $X_PRE_LIB $X_LIBS $LIBS -lX11
 
 LIBS="$X_PRE_LIBS $X_LIBS $LIBS -lX11 $X_EXTRA_LIBS"
 
-AC_CHECK_LIB(Xaw, main,[],no_Xaw=yes,$LIBS)
-if test "x$no_Xaw" = xyes; then
-  AC_MSG_ERROR(Unable to find Xaw library)
-fi
+AC_CHECK_LIB(Xaw, main, 
+  LIBS="$LIBS -lXaw",
+  AC_MSG_ERROR(Unable to find Xaw library),
+  $LIBS)
+
+AC_CHECK_LIB(Xt, XtDisplay,
+  LIBS="$LIBS -lXt",
+  AC_MSG_ERROR(Unable to find Xt library),
+  $LIBS)
+
+AC_CHECK_LIB(Xmu, XmuGetHostname,
+  LIBS="$LIBS -lXmu",
+  AC_MSG_ERROR(Unable to find Xmu library),
+  $LIBS)
 
 dnl Checks for libraries.
 
