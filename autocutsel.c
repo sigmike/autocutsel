@@ -48,6 +48,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
+#include <errno.h>
 
 #ifdef WITH_DMALLOC
 #include "dmalloc.h"
@@ -71,6 +73,8 @@ static XrmOptionDescRec optionDesc[] = {
   {"-d",         "debug",     XrmoptionNoArg,  "on"},
   {"-verbose",   "verbose",   XrmoptionNoArg,  "on"},
   {"-v",         "verbose",   XrmoptionNoArg,  "on"},
+  {"-fork",      "fork",      XrmoptionNoArg,  "on"},
+  {"-f",         "fork",      XrmoptionNoArg,  "on"},
   {"-pause",     "pause",     XrmoptionSepArg, NULL},
   {"-p",         "pause",     XrmoptionSepArg, NULL},
 };
@@ -79,7 +83,7 @@ int Syntax(call)
      char *call;
 {
   fprintf (stderr,
-	   "usage:  %s [-selection <name>] [-cutbuffer <number>] [-pause <milliseconds>] [-debug] [-verbose]\n", 
+	   "usage:  %s [-selection <name>] [-cutbuffer <number>] [-pause <milliseconds>] [-debug] [-verbose] [-fork]\n", 
 	   call);
   exit (1);
 }
@@ -89,10 +93,12 @@ typedef struct {
   int     buffer;
   String  debug_option;
   String  verbose_option;
+  String  fork_option;
   String  kill;
   int     pause;
   int     debug; 
   int     verbose; 
+  int     fork;
   Atom    selection;
   char*   value;
   int     length;
@@ -112,6 +118,8 @@ static XtResource resources[] = {
    Offset(debug_option), XtRString, "off"},
   {"verbose", "Verbose", XtRString, sizeof(String),
    Offset(verbose_option), XtRString, "off"},
+  {"fork", "Fork", XtRString, sizeof(String),
+   Offset(fork_option), XtRString, "off"},
   {"kill", "kill", XtRString, sizeof(String),
    Offset(kill), XtRString, "off"},
   {"pause", "Pause", XtRInt, sizeof(int),
@@ -119,6 +127,35 @@ static XtResource resources[] = {
 };
 
 #undef Offset
+
+static void CloseStdFds ()
+{
+  int fd;
+
+  for (fd = 0; fd < 3; fd++)
+    close (fd);
+}
+
+static RETSIGTYPE Terminate (caught)
+  int caught;
+{
+  exit (0);
+}
+
+static void TrapSignals ()
+{
+  int catch;
+  struct sigaction action;
+
+  sigemptyset (&action.sa_mask);
+  action.sa_flags = 0;
+  for (catch = 1; catch < NSIG; catch++) {
+    if (catch != SIGKILL) {
+      action.sa_handler = Terminate;
+      sigaction (catch, &action, (struct sigaction *) 0);
+    }
+  }
+}
 
 static void PrintValue(value, length)
      char *value;
@@ -460,7 +497,33 @@ int main(int argc, char* argv[])
     options.verbose = 1;
   else
     options.verbose = 0;
-   
+  if (strcmp(options.fork_option, "on") == 0) {
+    options.fork = 1;
+    options.verbose = 0;
+    options.debug = 0;
+  }
+  else
+    options.fork = 0;
+
+  if (options.fork) {
+    if (getppid () != 1) {
+      setpgrp ();
+      switch (fork ()) {
+      case -1:
+      fprintf (stderr, "could not fork, exiting\n");
+      return errno;
+      case  0:
+      sleep (3); /* Wait for father to exit */
+      chdir ("/");
+        TrapSignals ();
+      CloseStdFds ();
+      break;
+      default:
+      return 0;
+      }
+    }
+  }
+
   options.value = NULL;
   options.length = 0;
 
@@ -477,6 +540,7 @@ int main(int argc, char* argv[])
 
   XtAppAddTimeOut(context, options.pause, timeout, 0);
   XtRealizeWidget(top);
+  XUnmapWindow(XtDisplay(top), XtWindow(top));
   XtAppMainLoop(context);
   return 0;
 }

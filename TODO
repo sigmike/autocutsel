@@ -1,3 +1,1 @@
 -remove dmalloc support: useless
--remove the little blank square on the display. but how??
--auto fork in background and add -kill option

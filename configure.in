@@ -36,6 +36,7 @@ dnl Checks for libraries.
 dnl Checks for header files.
 
 dnl Checks for typedefs, structures, and compiler characteristics.
+AC_TYPE_SIGNAL
 
 dnl Checks for library functions.
 AM_WITH_DMALLOC
