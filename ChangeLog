@@ -1,3 +1,11 @@
+v0.7: 2004-09-10
+  - fixed a bug when the first copy comes from the cutbuffer
+  - the -selection parameter now works
+  - changed default selection to CLIPBOARD instead of PRIMARY.
+    It means you know have to *COPY* and *PASTE* texts to have them handled
+    by autocutsel. Just selecting text will only work in a few applications.
+    If you want the old behavior, run "autocusel -selection PRIMARY"
+
 v0.6.2: 2002-06-03
   - added a cutsel tools to change/retreive the cutbuffer
     or the selection
