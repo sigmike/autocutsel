@@ -431,7 +431,7 @@ void timeout(XtPointer p, XtIntervalId* i)
   else
     XtGetSelectionValue(box, selection, XA_STRING,
 			SelectionReceived, NULL,
-			XtLastTimestampProcessed(XtDisplay(box)));
+			CurrentTime);
   
   XtAppAddTimeOut(context, options.pause, timeout, 0);
 }
