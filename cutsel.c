@@ -2,7 +2,7 @@
  * cutsel.c by Michael Witrant <mike @ lepton . fr>
  * Manipulates the cutbuffer and the selection
  * version 0.1
- * Copyright (c) 2002 Michael Witrant.
+ * Copyright (c) 2002,2004 Michael Witrant.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

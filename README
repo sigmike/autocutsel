@@ -1,6 +1,6 @@
 autocutsel
-http://www.lepton.fr/tools/autocutsel
-Copyright (c) 2001,2002 - Michael Witrant
+https://savannah.nongnu.org/projects/autocutsel/
+Copyright (c) 2001,2002,2004 - Michael Witrant
 
 autocutsel synchronizes the two copy/paste buffers mainly
 used by X applications.
