@@ -51,10 +51,6 @@
 #include <signal.h>
 #include <errno.h>
 
-#ifdef WITH_DMALLOC
-#include "dmalloc.h"
-#endif
-
 static Widget box;
 static Display* dpy;
 static XtAppContext context;

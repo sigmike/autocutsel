@@ -39,7 +39,6 @@ dnl Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIGNAL
 
 dnl Checks for library functions.
-AM_WITH_DMALLOC
 
 AC_OUTPUT(Makefile)
 
