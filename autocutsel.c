@@ -1,7 +1,6 @@
 /*
  * autocutsel.c by Michael Witrant <mike @ lepton . fr>
  * Synchronizes the cutbuffer and the selection
- * version 0.6.2
  * Copyright (c) 2001,2002,2004 Michael Witrant.
  * 
  * Most code taken from:
