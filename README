@@ -36,6 +36,9 @@ To build autocutsel:
  ./configure
  make
 
+If configure fails because it can't find X or Xaw libraries, you may have to
+install the devel packages of these libraries.
+
 To install it (as root):
  make install
 

@@ -10,7 +10,7 @@ AC_PROG_RANLIB
 AC_PATH_XTRA
 if test "$no_x" = "yes"
 then
-  AC_MSG_ERROR([X libraries must be installed])
+  AC_MSG_ERROR([Unable to find X libraries])
 fi
 AC_CHECK_LIB(Xext, main, LIBS="$LIBS -lXext", [], $X_PRE_LIB $X_LIBS $LIBS -lX11 $X_EXTRA_LIBS)
 
@@ -18,7 +18,7 @@ LIBS="$X_PRE_LIBS $X_LIBS $LIBS -lX11 $X_EXTRA_LIBS"
 
 AC_CHECK_LIB(Xaw, main,[],no_Xaw=yes,$LIBS)
 if test "x$no_Xaw" = xyes; then
-  AC_MSG_ERROR(Xaw library must be installed)
+  AC_MSG_ERROR(Unable to find Xaw library)
 fi
 
 dnl Checks for libraries.
