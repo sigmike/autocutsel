@@ -1,7 +1,7 @@
 v0.7: 2004-09-10
-  - fixed a bug when the first copy comes from the cutbuffer
+  - fixed a bug when the first copy comes from the cutbuffer (jluu)
   - the -selection parameter now works
-  - changed default selection to CLIPBOARD instead of PRIMARY.
+  - changed default selection to CLIPBOARD instead of PRIMARY (jluu)
     It means you now have to *COPY* and *PASTE* texts to have them handled
     by autocutsel. Just selecting text will only work in a few applications.
     If you want the old behavior, run "autocusel -selection PRIMARY"
