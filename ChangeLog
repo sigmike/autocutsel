@@ -1,4 +1,4 @@
-v0.7: 2004-09-10
+v0.7.0: 2004-09-11
   - fixed a bug when the first copy comes from the cutbuffer (jluu)
   - the -selection parameter now works
   - changed default selection to CLIPBOARD instead of PRIMARY (jluu)
