@@ -1,3 +1,7 @@
+v0.8.1:
+  - fixed a bug on 64 bits systems
+  - improved debug messages
+
 v0.8:
   - removed blank square
   - added option -fork

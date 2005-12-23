@@ -31,11 +31,12 @@ Windows, the cutbuffer and the CLIPBOARD selection are updated. When you
 copy text on the server using either the cutbuffer or the CLIPBOARD
 selection, the Windows's clipboard is always updated.
 
-If you downloaded autocutsel from CVS, you first have to run ./autogen.sh to build the configure script.
 
 To build autocutsel:
  ./configure
  make
+
+If you downloaded autocutsel from CVS, you first have to run ./autogen.sh to build the configure script.
 
 If configure fails because it can't find X or Xaw libraries, you may have to
 install the devel packages of these libraries.
@@ -45,6 +46,10 @@ To install it (as root):
 
 To run it:
  autocutsel
+
+By default, autocutsel synchronizes the CLIPBOARD selection. You may want to use the PRIMARY selection instead, if your applications use Motif or another toolkit not using the CLIPBOARD. To do that, simply run
+ autocutsel -selection PRIMARY
+
 
 Any feedback is welcome.
 
@@ -64,3 +69,4 @@ Michael Witrant <mike at lepton.fr>
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
