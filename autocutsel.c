@@ -204,27 +204,40 @@ static Boolean ConvertSelection(w, selection, target,
   Display* d = XtDisplay(w);
   XSelectionRequestEvent* req =
     XtGetSelectionRequest(w, *selection, (XtRequestId)NULL);
-   
+  
+  if (options.debug) {
+    printf("Window 0x%lx requested %s of selection %s : ",
+      req->requestor,
+      XGetAtomName(d, *target),
+      XGetAtomName(d, *selection));
+  }
+	
   if (*target == XA_TARGETS(d)) {
-    Atom* targetP;
+    Atom *targetP, *atoms;
     XPointer std_targets;
     unsigned long std_length;
+    int i;
+    
     XmuConvertStandardSelection(w, req->time, selection, target, type,
 				&std_targets, &std_length, format);
     *value = XtMalloc(sizeof(Atom)*(std_length + 4));
     targetP = *(Atom**)value;
+    atoms = targetP;
     *length = std_length + 4;
     *targetP++ = XA_STRING;
     *targetP++ = XA_TEXT(d);
     *targetP++ = XA_LENGTH(d);
     *targetP++ = XA_LIST_LENGTH(d);
-    /*
-     *targetP++ = XA_CHARACTER_POSITION(d);
-     */
     memmove( (char*)targetP, (char*)std_targets, sizeof(Atom)*std_length);
     XtFree((char*)std_targets);
     *type = XA_ATOM;
-    *format = 32;
+    *format = sizeof(Atom) * 8;
+    
+    if (options.debug) {
+      for (i=0; i<*length; i++)
+        printf("%s ", XGetAtomName(d, atoms[i]));
+      printf("\n");
+    }
 
     return True;
   }
@@ -233,14 +246,12 @@ static Boolean ConvertSelection(w, selection, target,
     *value = XtMalloc((Cardinal) options.length);
     memmove( (char *) *value, options.value, options.length);
     *length = options.length;
-    *format = 8;
+    *format = sizeof(char) * 8;
 
-    if (options.debug)
-      {
-	printf("Giving selection as string: ");
-	PrintValue((char*)*value, *length);
-	printf("\n");
-      }
+    if (options.debug) {
+      PrintValue((char*)*value, *length);
+    	printf("\n");
+    }
    
     return True;
   }
@@ -250,10 +261,10 @@ static Boolean ConvertSelection(w, selection, target,
     *value = (XtPointer) temp;
     *type = XA_INTEGER;
     *length = 1;
-    *format = 32;
+    *format = sizeof(long) * 8;
 
     if (options.debug)
-      printf("Giving selection list length: %ld\n", *temp);
+      printf("%ld\n", *temp);
 
     return True;
   }
@@ -263,32 +274,20 @@ static Boolean ConvertSelection(w, selection, target,
     *value = (XtPointer) temp;
     *type = XA_INTEGER;
     *length = 1;
-    *format = 32;
+    *format = sizeof(long) * 8;
 
     if (options.debug)
-      printf("Giving selection length: %ld\n", *temp);
+      printf("%ld\n", *temp);
 
     return True;
   }
-#ifdef notdef
-  if (*target == XA_CHARACTER_POSITION(d)) {
-    long *temp = (long *) XtMalloc (2 * sizeof(long));
-    temp[0] = ctx->text.s.left + 1;
-    temp[1] = ctx->text.s.right;
-    *value = (XtPointer) temp;
-    *type = XA_SPAN(d);
-    *length = 2;
-    *format = 32;
-    return True;
-  }
-#endif /* notdef */
   if (XmuConvertStandardSelection(w, req->time, selection, target, type,
 				  (XPointer *)value, length, format))
     return True;
    
   /* else */
   if (options.debug)
-    printf("Unable to convert selection\n");
+    printf("Target not supported\n");
 
   return False;
 }
@@ -332,11 +331,11 @@ static void ChangeValue(value, length)
       memcpy(options.value, value, options.length);
 
       if (options.debug)
-	{
-	printf("New value saved: ");
-	PrintValue(options.value, options.length);
-	printf("\n");
-	}
+      {
+        printf("New value saved: ");
+        PrintValue(options.value, options.length);
+        printf("\n");
+    	}
     }
 }
 
@@ -355,30 +354,29 @@ static void OwnSelectionIfDiffers(w, client_data, selection, type, value, receiv
   if (*type == 0 || 
       *type == XT_CONVERT_FAIL || 
       length == 0 || 
-      ValueDiffers(value, length))
+      ValueDiffers(value, length)) {
+    if (options.debug)
+      printf("Selection is out of date. Owning it\n");
+    
+    if (options.verbose)
+    {
+      printf("cut -> sel: ");
+      PrintValue(options.value, options.length);
+      printf("\n");
+    }
+    
+    if (XtOwnSelection(box, options.selection,
+     0, //XtLastTimestampProcessed(dpy),
+     ConvertSelection, LoseSelection, NULL) == True)
     {
       if (options.debug)
-	printf("Selection is out of date. Owning it\n");
+        printf("Selection owned\n");
       
-      if (options.verbose)
-	{
-	  printf("cut -> sel: ");
-	  PrintValue(options.value, options.length);
-	  printf("\n");
-	}
-      
-      if (XtOwnSelection(box, options.selection,
-			 0, //XtLastTimestampProcessed(dpy),
-			 ConvertSelection, LoseSelection, NULL) == True)
-	{
-	  if (options.debug)
-	    printf("Selection owned\n");
-	  
-	  options.own_selection = 1;
-	}
-      else
-	printf("WARNING: Unable to own selection!\n");
+      options.own_selection = 1;
     }
+    else
+      printf("WARNING: Unable to own selection!\n");
+  }
   XtFree(value);
 }
 
@@ -394,11 +392,11 @@ static void CheckBuffer()
   if (length > 0 && ValueDiffers(value, length))
     {
       if (options.debug)
-	{
-	printf("Buffer changed: ");
-	PrintValue(value, length);
-	printf("\n");
-	}
+      {
+        printf("Buffer changed: ");
+        PrintValue(value, length);
+        printf("\n");
+      }
       
       ChangeValue(value, length);
       XtGetSelectionValue(box, selection, XA_STRING,
@@ -527,7 +525,7 @@ int main(int argc, char* argv[])
    
   box = XtCreateManagedWidget("box", boxWidgetClass, top, NULL, 0);
   dpy = XtDisplay(top);
-  
+
   selection = XInternAtom(dpy, options.selection_name, 0);
   options.selection = selection;
   buffer = 0;
@@ -540,5 +538,3 @@ int main(int argc, char* argv[])
   XtAppMainLoop(context);
   return 0;
 }
-
-
