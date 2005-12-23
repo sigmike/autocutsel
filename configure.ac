@@ -40,5 +40,14 @@ AC_TYPE_SIGNAL
 
 dnl Checks for library functions.
 
+dnl Warnings
+AC_MSG_CHECKING([whether to enable -Wall])
+if test -n "$GCC"; then 
+  AC_MSG_RESULT(adding -Wall to CFLAGS.)
+  CFLAGS="$CFLAGS -Wall"
+else
+  AC_MSG_RESULT(no)
+fi
+
 AC_OUTPUT(Makefile)
 
