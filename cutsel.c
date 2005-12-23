@@ -124,10 +124,10 @@ static Boolean ConvertSelection(w, selection, target,
    
   if (*target == XA_TARGETS(d)) {
     Atom* targetP;
-    Atom* std_targets;
+    XPointer std_targets;
     unsigned long std_length;
     XmuConvertStandardSelection(w, req->time, selection, target, type,
-				(XPointer*)&std_targets, &std_length, format);
+				&std_targets, &std_length, format);
     *value = XtMalloc(sizeof(Atom)*(std_length + 4));
     targetP = *(Atom**)value;
     *length = std_length + 4;
@@ -259,7 +259,7 @@ int main(int argc, char* argv[])
 			  optionDesc, XtNumber(optionDesc), &argc, argv, NULL,
 			  XtNoverrideRedirect, True,
 			  XtNgeometry, "-10-10",
-			  0);
+			  NULL);
 
   if (argc < 2) Syntax(argv[0]);
 
