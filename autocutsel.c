@@ -1,7 +1,7 @@
 /*
  * autocutsel.c by Michael Witrant <mike @ lepton . fr>
  * Synchronizes the cutbuffer and the selection
- * Copyright (c) 2001,2002,2004 Michael Witrant.
+ * Copyright (c) 2001,2002,2004,2006 Michael Witrant.
  * 
  * Most code taken from:
  * * clear-cut-buffers.c by "E. Jay Berkenbilt" <ejb @ ql . org>
@@ -531,7 +531,11 @@ int main(int argc, char* argv[])
 
   if (options.fork) {
     if (getppid () != 1) {
-      setpgrp ();
+#ifdef SETPGRP_VOID
+      setpgrp();
+#else
+      setpgrp(0, 0);
+#endif
       switch (fork ()) {
       case -1:
       fprintf (stderr, "could not fork, exiting\n");

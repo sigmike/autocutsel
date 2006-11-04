@@ -39,6 +39,7 @@ dnl Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIGNAL
 
 dnl Checks for library functions.
+AC_FUNC_SETPGRP
 
 dnl Warnings
 AC_MSG_CHECKING([whether to enable -Wall])
