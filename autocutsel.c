@@ -45,6 +45,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xaw/Box.h>
 #include <X11/Xaw/Cardinals.h>
+#include <X11/Xmd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -206,7 +207,7 @@ static Boolean ConvertSelection(w, selection, target,
     XtGetSelectionRequest(w, *selection, (XtRequestId)NULL);
   
   if (options.debug) {
-    printf("Window 0x%lx requested %s of selection %s : ",
+    printf("Window 0x%lx requested %s of selection %s.\n",
       req->requestor,
       XGetAtomName(d, *target),
       XGetAtomName(d, *selection));
@@ -234,6 +235,7 @@ static Boolean ConvertSelection(w, selection, target,
     *format = sizeof(Atom) * 8;
     
     if (options.debug) {
+      printf("Targets are: ");
       for (i=0; i<*length; i++)
         printf("%s ", XGetAtomName(d, atoms[i]));
       printf("\n");
@@ -249,6 +251,7 @@ static Boolean ConvertSelection(w, selection, target,
     *format = sizeof(char) * 8;
 
     if (options.debug) {
+      printf("Returning ");
       PrintValue((char*)*value, *length);
     	printf("\n");
     }
@@ -256,34 +259,36 @@ static Boolean ConvertSelection(w, selection, target,
     return True;
   }
   if (*target == XA_LIST_LENGTH(d)) {
-    long *temp = (long *) XtMalloc (sizeof(long));
+    CARD32 *temp = (CARD32 *) XtMalloc (sizeof(CARD32));
     *temp = 1L;
     *value = (XtPointer) temp;
     *type = XA_INTEGER;
     *length = 1;
-    *format = sizeof(long) * 8;
+    *format = sizeof(CARD32) * 8;
 
     if (options.debug)
-      printf("%ld\n", *temp);
+      printf("Returning %ld\n", *temp);
 
     return True;
   }
   if (*target == XA_LENGTH(d)) {
-    long *temp = (long *) XtMalloc (sizeof(long));
+    CARD32 *temp = (CARD32 *) XtMalloc (sizeof(CARD32));
     *temp = options.length;
     *value = (XtPointer) temp;
     *type = XA_INTEGER;
     *length = 1;
-    *format = sizeof(long) * 8;
+    *format = sizeof(CARD32) * 8;
 
     if (options.debug)
-      printf("%ld\n", *temp);
+      printf("Returning %ld\n", *temp);
 
     return True;
   }
   if (XmuConvertStandardSelection(w, req->time, selection, target, type,
-				  (XPointer *)value, length, format))
+				  (XPointer *)value, length, format)) {
+    printf("Returning conversion of standard selection\n");
     return True;
+  }
    
   /* else */
   if (options.debug)
@@ -401,7 +406,7 @@ static void CheckBuffer()
       ChangeValue(value, length);
       XtGetSelectionValue(box, selection, XA_STRING,
 			  OwnSelectionIfDiffers, NULL,
-			  XtLastTimestampProcessed(XtDisplay(box)));
+			  CurrentTime);
     }
 
   XFree(value);

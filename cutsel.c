@@ -38,6 +38,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xaw/Box.h>
 #include <X11/Xaw/Cardinals.h>
+#include <X11/Xmd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -227,6 +228,49 @@ static void SelectionReceived(w, client_data, selection, type, value, received_l
   exit(0);
 }
 
+static void TargetsReceived(w, client_data, selection, type, value, length, format)
+     Widget w;
+     XtPointer client_data;
+     Atom *selection, *type;
+     XtPointer value;
+     unsigned long *length;
+     int *format;
+{
+  Display* d = XtDisplay(w);
+  int i;
+  Atom *atoms;
+  
+  if (*type == XA_ATOM) {
+      atoms = (Atom*)value;
+      printf("%lu targets (%i bits each):\n", *length, *format);
+      for (i=0; i<*length; i++)
+          printf("%s\n", XGetAtomName(d, atoms[i]));
+  } else
+      printf("Invalid type received: %s\n", XGetAtomName(d, *type));
+
+  XtFree(value);
+  exit(0);
+}
+
+static void LengthReceived(w, client_data, selection, type, value, length, format)
+     Widget w;
+     XtPointer client_data;
+     Atom *selection, *type;
+     XtPointer value;
+     unsigned long *length;
+     int *format;
+{
+  Display* d = XtDisplay(w);
+  
+  if (*type == XA_INTEGER) {
+      printf("Length is %lu\n", *(CARD32*)value);
+  } else
+      printf("Invalid type received: %s\n", *type == 0 ? "0" : XGetAtomName(d, *type));
+
+  XtFree(value);
+  exit(0);
+}
+
 void OwnSelection(XtPointer p, XtIntervalId* i)
 {
   if (XtOwnSelection(box, options.selection,
@@ -244,7 +288,23 @@ void GetSelection(XtPointer p, XtIntervalId* i)
 {
   XtGetSelectionValue(box, selection, XA_STRING,
 		      SelectionReceived, NULL,
-		      XtLastTimestampProcessed(XtDisplay(box)));
+		      CurrentTime);
+}
+
+void GetTargets(XtPointer p, XtIntervalId* i)
+{
+  Display* d = XtDisplay(box);
+    XtGetSelectionValue(box, selection, XA_TARGETS(d),
+            TargetsReceived, NULL,
+            CurrentTime);
+}
+
+void GetLength(XtPointer p, XtIntervalId* i)
+{
+  Display* d = XtDisplay(box);
+    XtGetSelectionValue(box, selection, XA_LENGTH(d),
+            LengthReceived, NULL,
+            CurrentTime);
 }
 
 void Exit(XtPointer p, XtIntervalId* i)
@@ -308,6 +368,10 @@ int main(int argc, char* argv[])
     } else {
       XtAppAddTimeOut(context, 10, GetSelection, 0);
     }
+  } else if (strcmp(argv[1], "targets") == 0) {
+    XtAppAddTimeOut(context, 10, GetTargets, 0);
+  } else if (strcmp(argv[1], "length") == 0) {
+    XtAppAddTimeOut(context, 10, GetLength, 0);
   } else {
     Syntax(argv[0]);
   }
@@ -316,5 +380,3 @@ int main(int argc, char* argv[])
   XtAppMainLoop(context);
   return 0;
 }
-
-
