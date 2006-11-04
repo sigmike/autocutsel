@@ -36,7 +36,8 @@ To build autocutsel:
  ./configure
  make
 
-If you downloaded autocutsel from CVS, you first have to run ./autogen.sh to build the configure script.
+If you downloaded autocutsel from CVS, you first have to run ./autogen.sh to
+build the configure script.
 
 If configure fails because it can't find X or Xaw libraries, you may have to
 install the devel packages of these libraries.
@@ -47,9 +48,15 @@ To install it (as root):
 To run it:
  autocutsel
 
-By default, autocutsel synchronizes the CLIPBOARD selection. You may want to use the PRIMARY selection instead, if your applications use Motif or another toolkit not using the CLIPBOARD. To do that, simply run
+By default, autocutsel synchronizes the CLIPBOARD selection. You may want to use
+the PRIMARY selection instead, if your applications use Motif or another toolkit
+not using the CLIPBOARD. To do that, simply run
  autocutsel -selection PRIMARY
 
+Some softwares (like Open Office Writer) have trouble when the PRIMARY selection
+is requested before the mouse button is released. As a workaround, you can run
+autocutsel with the "-buttonup" option and it will only get the selection when
+the first mouse button is not pressed.
 
 Any feedback is welcome.
 
@@ -69,4 +76,3 @@ Michael Witrant <mike at lepton.fr>
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-

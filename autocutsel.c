@@ -74,14 +74,16 @@ static XrmOptionDescRec optionDesc[] = {
   {"-f",         "fork",      XrmoptionNoArg,  "on"},
   {"-pause",     "pause",     XrmoptionSepArg, NULL},
   {"-p",         "pause",     XrmoptionSepArg, NULL},
+  {"-buttonup",  "buttonup",  XrmoptionNoArg,  "on"},
 };
 
 int Syntax(call)
      char *call;
 {
   fprintf (stderr,
-	   "usage:  %s [-selection <name>] [-cutbuffer <number>] [-pause <milliseconds>] [-debug] [-verbose] [-fork]\n", 
-	   call);
+	  "usage:  %s [-selection <name>] [-cutbuffer <number>]"
+    " [-pause <milliseconds>] [-debug] [-verbose] [-fork] [-buttonup]\n", 
+	  call);
   exit (1);
 }
 
@@ -91,6 +93,7 @@ typedef struct {
   String  debug_option;
   String  verbose_option;
   String  fork_option;
+  String  buttonup_option;
   String  kill;
   int     pause;
   int     debug; 
@@ -100,6 +103,7 @@ typedef struct {
   char*   value;
   int     length;
   int     own_selection;
+  int     buttonup;
 } OptionsRec;
 
 OptionsRec options;
@@ -121,6 +125,8 @@ static XtResource resources[] = {
    Offset(kill), XtRString, "off"},
   {"pause", "Pause", XtRInt, sizeof(int),
    Offset(pause), XtRImmediate, (XtPointer)500},
+  {"buttonup", "ButtonUp", XtRString, sizeof(String),
+   Offset(buttonup_option), XtRString, "off"},
 };
 
 #undef Offset
@@ -463,10 +469,23 @@ void timeout(XtPointer p, XtIntervalId* i)
 {
   if (options.own_selection)
     CheckBuffer();
-  else
-    XtGetSelectionValue(box, selection, XA_STRING,
-			SelectionReceived, NULL,
-			CurrentTime);
+  else {
+    int get_value = 1;
+    if (options.buttonup) {
+      int screen_num = DefaultScreen(dpy);
+      int root_x, root_y, win_x, win_y;
+      unsigned int mask;
+      Window root_wnd, child_wnd;
+      XQueryPointer(dpy, RootWindow(dpy,screen_num), &root_wnd, &child_wnd,
+        &root_x, &root_y, &win_x, &win_y, &mask);
+      if (mask & (ShiftMask | Button1Mask))
+        get_value = 0;
+    }
+    if (get_value)
+      XtGetSelectionValue(box, selection, XA_STRING,    
+        SelectionReceived, NULL,
+        CurrentTime);
+  }
   
   XtAppAddTimeOut(context, options.pause, timeout, 0);
 }
@@ -496,6 +515,12 @@ int main(int argc, char* argv[])
     options.verbose = 1;
   else
     options.verbose = 0;
+  
+  if (strcmp(options.buttonup_option, "on") == 0)
+    options.buttonup = 1;
+  else
+    options.buttonup = 0;
+  
   if (strcmp(options.fork_option, "on") == 0) {
     options.fork = 1;
     options.verbose = 0;
