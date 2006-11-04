@@ -50,5 +50,6 @@ else
   AC_MSG_RESULT(no)
 fi
 
-AC_OUTPUT(Makefile)
+CFLAGS="$CFLAGS $X_CFLAGS"
 
+AC_OUTPUT(Makefile)
