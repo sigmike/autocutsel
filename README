@@ -1,6 +1,6 @@
 autocutsel
 http://lepton.fr/tools/autocutsel/ or http://www.nongnu.org/autocutsel/
-Copyright (c) 2001,2002,2004 - Michael Witrant
+Copyright (c) 2001-2006 - Michael Witrant
 
 X servers use two schemes to copy text between applications. The first one
 (old and deprecated) is the cutbuffer. It is a simple buffer in which any
@@ -30,7 +30,6 @@ three "clipboards" are always kept synchronized. When you copy some text in
 Windows, the cutbuffer and the CLIPBOARD selection are updated. When you
 copy text on the server using either the cutbuffer or the CLIPBOARD
 selection, the Windows's clipboard is always updated.
-
 
 To build autocutsel:
  ./configure

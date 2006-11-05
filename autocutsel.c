@@ -1,7 +1,7 @@
 /*
  * autocutsel by Michael Witrant <mike @ lepton . fr>
  * Synchronizes the cutbuffer and the selection
- * Copyright (c) 2001,2002,2004,2006 Michael Witrant.
+ * Copyright (c) 2001-2006 Michael Witrant.
  * 
  * Most code taken from:
  * * clear-cut-buffers.c by "E. Jay Berkenbilt" <ejb @ ql . org>

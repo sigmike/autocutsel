@@ -1,4 +1,4 @@
-v0.9.0:
+v0.9.0: 2006-11-05
   - really works on 64 bits linux
   - added test suite
   - added workaround for open office writer (Bob Kinney)
