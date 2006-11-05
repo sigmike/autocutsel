@@ -238,7 +238,7 @@ static Boolean ConvertSelection(w, selection, target,
     memmove( (char*)targetP, (char*)std_targets, sizeof(Atom)*std_length);
     XtFree((char*)std_targets);
     *type = XA_ATOM;
-    *format = sizeof(Atom) * 8;
+    *format = 32;
     
     if (options.debug) {
       printf("Targets are: ");
@@ -254,7 +254,7 @@ static Boolean ConvertSelection(w, selection, target,
     *value = XtMalloc((Cardinal) options.length);
     memmove( (char *) *value, options.value, options.length);
     *length = options.length;
-    *format = sizeof(char) * 8;
+    *format = 8;
 
     if (options.debug) {
       printf("Returning ");
@@ -270,7 +270,7 @@ static Boolean ConvertSelection(w, selection, target,
     *value = (XtPointer) temp;
     *type = XA_INTEGER;
     *length = 1;
-    *format = sizeof(CARD32) * 8;
+    *format = 32;
 
     if (options.debug)
       printf("Returning %ld\n", *temp);
@@ -283,7 +283,7 @@ static Boolean ConvertSelection(w, selection, target,
     *value = (XtPointer) temp;
     *type = XA_INTEGER;
     *length = 1;
-    *format = sizeof(CARD32) * 8;
+    *format = 32;
 
     if (options.debug)
       printf("Returning %ld\n", *temp);
