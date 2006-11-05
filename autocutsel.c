@@ -1,5 +1,5 @@
 /*
- * autocutsel.c by Michael Witrant <mike @ lepton . fr>
+ * autocutsel by Michael Witrant <mike @ lepton . fr>
  * Synchronizes the cutbuffer and the selection
  * Copyright (c) 2001,2002,2004,2006 Michael Witrant.
  * 
@@ -293,12 +293,15 @@ int main(int argc, char* argv[])
     options.debug = 1;
   else
     options.debug = 0;
-   
+  
   if (strcmp(options.verbose_option, "on") == 0)
     options.verbose = 1;
   else
     options.verbose = 0;
   
+  if (options.debug || options.verbose)
+    printf("autcutsel v%s\n", VERSION);
+   
   if (strcmp(options.buttonup_option, "on") == 0)
     options.buttonup = 1;
   else

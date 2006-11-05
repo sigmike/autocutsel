@@ -1,3 +1,9 @@
+v0.9.0:
+  - really works on 64 bits linux
+  - added test suite
+  - added workaround for open office writer (Bob Kinney)
+  - fixed compilation problem on NetBSD (Jeremy C. Reed)
+
 v0.8.1:
   - fixed a bug on 64 bits systems
   - improved debug messages

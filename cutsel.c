@@ -1,7 +1,6 @@
 /*
- * cutsel.c by Michael Witrant <mike @ lepton . fr>
+ * autocutsel by Michael Witrant <mike @ lepton . fr>
  * Manipulates the cutbuffer and the selection
- * version 0.1
  * Copyright (c) 2002,2004,2006 Michael Witrant.
  * 
  * This program is free software; you can redistribute it and/or modify
@@ -191,6 +190,9 @@ int main(int argc, char* argv[])
     options.verbose = 1;
   else
     options.verbose = 0;
+
+  if (options.debug || options.verbose)
+    printf("cutsel v%s\n", VERSION);
    
   options.value = NULL;
   options.length = 0;
