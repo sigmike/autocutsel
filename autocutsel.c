@@ -81,9 +81,9 @@ int Syntax(call)
      char *call;
 {
   fprintf (stderr,
-	  "usage:  %s [-selection <name>] [-cutbuffer <number>]"
+    "usage:  %s [-selection <name>] [-cutbuffer <number>]"
     " [-pause <milliseconds>] [-debug] [-verbose] [-fork] [-buttonup]\n", 
-	  call);
+    call);
   exit (1);
 }
 
@@ -112,26 +112,26 @@ OptionsRec options;
 
 static XtResource resources[] = {
   {"selection", "Selection", XtRString, sizeof(String),
-   Offset(selection_name), XtRString, "CLIPBOARD"},
+    Offset(selection_name), XtRString, "CLIPBOARD"},
   {"cutBuffer", "CutBuffer", XtRInt, sizeof(int),
-   Offset(buffer), XtRImmediate, (XtPointer)0},
+    Offset(buffer), XtRImmediate, (XtPointer)0},
   {"debug", "Debug", XtRString, sizeof(String),
-   Offset(debug_option), XtRString, "off"},
+    Offset(debug_option), XtRString, "off"},
   {"verbose", "Verbose", XtRString, sizeof(String),
-   Offset(verbose_option), XtRString, "off"},
+    Offset(verbose_option), XtRString, "off"},
   {"fork", "Fork", XtRString, sizeof(String),
-   Offset(fork_option), XtRString, "off"},
+    Offset(fork_option), XtRString, "off"},
   {"kill", "kill", XtRString, sizeof(String),
-   Offset(kill), XtRString, "off"},
+    Offset(kill), XtRString, "off"},
   {"pause", "Pause", XtRInt, sizeof(int),
-   Offset(pause), XtRImmediate, (XtPointer)500},
+    Offset(pause), XtRImmediate, (XtPointer)500},
   {"buttonup", "ButtonUp", XtRString, sizeof(String),
-   Offset(buttonup_option), XtRString, "off"},
+    Offset(buttonup_option), XtRString, "off"},
 };
 
 #undef Offset
 
-static void CloseStdFds ()
+static void CloseStdFds()
 {
   int fd;
 
@@ -139,13 +139,12 @@ static void CloseStdFds ()
     close (fd);
 }
 
-static RETSIGTYPE Terminate (caught)
-  int caught;
+static RETSIGTYPE Terminate(int caught)
 {
   exit (0);
 }
 
-static void TrapSignals ()
+static void TrapSignals()
 {
   int catch;
   struct sigaction action;
@@ -160,53 +159,43 @@ static void TrapSignals ()
   }
 }
 
-static void PrintValue(value, length)
-     char *value;
-     int length;
+static void PrintValue(char *value, int length)
 {
   unsigned char c;
   int len = 0;
   
   putc('"', stdout);
-  for (; length > 0; length--, value++)
-    {
-      c = (unsigned char)*value;
-      switch (c)
-	{
-	case '\n':
-	  printf("\\n");
-	  break;
-	case '\r':
-	  printf("\\r");
-	  break;
-	case '\t':
-	  printf("\\t");
-	  break;
-	default:
-	  if (c < 32 || c > 127)
-	    printf("\\x%02X", c);
-	  else
-	    putc(c, stdout);
-	}
-      len++;
-      if (len >= 48)
-	{
-	  printf("\"...");
-	  return;
-	}
-	    
+  for (; length > 0; length--, value++) {
+    c = (unsigned char)*value;
+    switch (c) {
+    case '\n':
+      printf("\\n");
+      break;
+    case '\r':
+      printf("\\r");
+      break;
+    case '\t':
+      printf("\\t");
+      break;
+    default:
+      if (c < 32 || c > 127)
+        printf("\\x%02X", c);
+      else
+        putc(c, stdout);
     }
+    len++;
+    if (len >= 48) {
+      printf("\"...");
+      return;
+    }
+  }
   putc('"', stdout);
 }
-	
+  
 // called when someone requests the selection value
-static Boolean ConvertSelection(w, selection, target,
-                                type, value, length, format)
-     Widget w;
-     Atom *selection, *target, *type;
-     XtPointer *value;
-     unsigned long *length;
-     int *format;
+static Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
+                                Atom *type, XtPointer *value,
+                                unsigned long length, int *format)
 {
   Display* d = XtDisplay(w);
   XSelectionRequestEvent* req =
@@ -218,7 +207,7 @@ static Boolean ConvertSelection(w, selection, target,
       XGetAtomName(d, *target),
       XGetAtomName(d, *selection));
   }
-	
+  
   if (*target == XA_TARGETS(d)) {
     Atom *targetP, *atoms;
     XPointer std_targets;
@@ -226,7 +215,7 @@ static Boolean ConvertSelection(w, selection, target,
     int i;
     
     XmuConvertStandardSelection(w, req->time, selection, target, type,
-				&std_targets, &std_length, format);
+        &std_targets, &std_length, format);
     *value = XtMalloc(sizeof(Atom)*(std_length + 4));
     targetP = *(Atom**)value;
     atoms = targetP;
@@ -249,23 +238,25 @@ static Boolean ConvertSelection(w, selection, target,
 
     return True;
   }
+  
   if (*target == XA_STRING || *target == XA_TEXT(d)) {
     *type = XA_STRING;
     *value = XtMalloc((Cardinal) options.length);
-    memmove( (char *) *value, options.value, options.length);
+    memmove((char *)*value, options.value, options.length);
     *length = options.length;
     *format = 8;
 
     if (options.debug) {
       printf("Returning ");
       PrintValue((char*)*value, *length);
-    	printf("\n");
+      printf("\n");
     }
    
     return True;
   }
+  
   if (*target == XA_LIST_LENGTH(d)) {
-    CARD32 *temp = (CARD32 *) XtMalloc (sizeof(CARD32));
+    CARD32 *temp = (CARD32 *) XtMalloc(sizeof(CARD32));
     *temp = 1L;
     *value = (XtPointer) temp;
     *type = XA_INTEGER;
@@ -277,8 +268,9 @@ static Boolean ConvertSelection(w, selection, target,
 
     return True;
   }
+  
   if (*target == XA_LENGTH(d)) {
-    CARD32 *temp = (CARD32 *) XtMalloc (sizeof(CARD32));
+    CARD32 *temp = (CARD32 *) XtMalloc(sizeof(CARD32));
     *temp = options.length;
     *value = (XtPointer) temp;
     *type = XA_INTEGER;
@@ -290,8 +282,9 @@ static Boolean ConvertSelection(w, selection, target,
 
     return True;
   }
+  
   if (XmuConvertStandardSelection(w, req->time, selection, target, type,
-				  (XPointer *)value, length, format)) {
+          (XPointer *)value, length, format)) {
     printf("Returning conversion of standard selection\n");
     return True;
   }
@@ -304,9 +297,7 @@ static Boolean ConvertSelection(w, selection, target,
 }
 
 // Called when we no longer own the selection
-static void LoseSelection(w, selection)
-     Widget w;
-     Atom *selection;
+static void LoseSelection(Widget w, Atom *selection)
 {
   if (options.debug)
     printf("Selection lost\n");
@@ -315,20 +306,15 @@ static void LoseSelection(w, selection)
 
 // Returns true if value (or length) is different
 // than current ones.
-static int ValueDiffers(value, length)
-     char *value;
-     int length;
+static int ValueDiffers(char *value, int length)
 {
   return (!options.value ||
-	  length != options.length ||
-	  memcmp(options.value, value, options.length)
-	  );
+    length != options.length ||
+    memcmp(options.value, value, options.length));
 }
 
 // Update the current value
-static void ChangeValue(value, length)
-     char *value;
-     int length;
+static void ChangeValue(char *value, int length)
 {
   if (options.value)
     XtFree(options.value);
@@ -337,28 +323,22 @@ static void ChangeValue(value, length)
   options.value = XtMalloc(options.length);
   if (!options.value)
     printf("WARNING: Unable to allocate memory to store the new value\n");
-  else
-    {
-      memcpy(options.value, value, options.length);
+  else {
+    memcpy(options.value, value, options.length);
 
-      if (options.debug)
-      {
-        printf("New value saved: ");
-        PrintValue(options.value, options.length);
-        printf("\n");
-    	}
+    if (options.debug) {
+      printf("New value saved: ");
+      PrintValue(options.value, options.length);
+      printf("\n");
     }
+  }
 }
 
 // Called just before owning the selection, to ensure we don't
 // do it if the selection already has the same value
-static void OwnSelectionIfDiffers(w, client_data, selection, type, value, received_length, format)
-     Widget w;
-     XtPointer client_data;
-     Atom *selection, *type;
-     XtPointer value;
-     unsigned long *received_length;
-     int *format;
+static void OwnSelectionIfDiffers(Widget w, XtPointer client_data,
+                                  Atom *selection, Atom *type, XtPointer value,
+                                  unsigned long *received_length, int *format)
 {
   int length = *received_length;
   
@@ -377,12 +357,10 @@ static void OwnSelectionIfDiffers(w, client_data, selection, type, value, receiv
     }
     
     if (XtOwnSelection(box, options.selection,
-     0, //XtLastTimestampProcessed(dpy),
-     ConvertSelection, LoseSelection, NULL) == True)
-    {
+        0, //XtLastTimestampProcessed(dpy),
+        ConvertSelection, LoseSelection, NULL) == True) {
       if (options.debug)
         printf("Selection owned\n");
-      
       options.own_selection = 1;
     }
     else
@@ -391,8 +369,7 @@ static void OwnSelectionIfDiffers(w, client_data, selection, type, value, receiv
   XtFree(value);
 }
 
-// Look for change in the buffer, and update
-// the selection if necessary
+// Look for change in the buffer, and update the selection if necessary
 static void CheckBuffer()
 {
   char *value;
@@ -400,66 +377,57 @@ static void CheckBuffer()
   
   value = XFetchBuffer(dpy, &length, buffer);
   
-  if (length > 0 && ValueDiffers(value, length))
-    {
-      if (options.debug)
-      {
-        printf("Buffer changed: ");
-        PrintValue(value, length);
-        printf("\n");
-      }
-      
-      ChangeValue(value, length);
-      XtGetSelectionValue(box, selection, XA_STRING,
-			  OwnSelectionIfDiffers, NULL,
-			  CurrentTime);
+  if (length > 0 && ValueDiffers(value, length)) {
+    if (options.debug) {
+      printf("Buffer changed: ");
+      PrintValue(value, length);
+      printf("\n");
     }
+    
+    ChangeValue(value, length);
+    XtGetSelectionValue(box, selection, XA_STRING,
+      OwnSelectionIfDiffers, NULL,
+      CurrentTime);
+  }
 
   XFree(value);
 }
 
 // Called when the requested selection value is availiable
-static void SelectionReceived(w, client_data, selection, type, value, received_length, format)
-     Widget w;
-     XtPointer client_data;
-     Atom *selection, *type;
-     XtPointer value;
-     unsigned long *received_length;
-     int *format;
+static void SelectionReceived(Widget w, XtPointer client_data, Atom *selection,
+                              Atom *type, XtPointer value,
+                              unsigned long *received_length, int *format)
 {
   int length = *received_length;
   
-  if (*type != 0 && *type != XT_CONVERT_FAIL)
-    {
-      if (length > 0 && ValueDiffers(value, length))
-	{
-	  if (options.debug)
-	    {
-	      printf("Selection changed: ");
-	      PrintValue((char*)value, length);
-	      printf("\n");
-	    }
-	  
-	  ChangeValue((char*)value, length);
-	  if (options.verbose)
-	    {
-	      printf("sel -> cut: ");
-	      PrintValue(options.value, options.length);
-	      printf("\n");
-	    }
-	  if (options.debug)
-	    printf("Updating buffer\n");
-	  
-	  XStoreBuffer(XtDisplay(w),
-		       (char*)options.value,
-		       (int)(options.length),
-		       buffer );
-	  
-	  XtFree(value);
-	  return;
-	}
+  if (*type != 0 && *type != XT_CONVERT_FAIL) {
+    if (length > 0 && ValueDiffers(value, length)) {
+      if (options.debug) {
+        printf("Selection changed: ");
+        PrintValue((char*)value, length);
+        printf("\n");
+      }
+    
+      ChangeValue((char*)value, length);
+      if (options.verbose) {
+        printf("sel -> cut: ");
+        PrintValue(options.value, options.length);
+        printf("\n");
+      }
+      if (options.debug)
+        printf("Updating buffer\n");
+      
+      XStoreBuffer(XtDisplay(w),
+             (char*)options.value,
+             (int)(options.length),
+             buffer );
+      
+      XtFree(value);
+      return;
     }
+  }
   XtFree(value);
+  
   // Unless a new selection value is found, check the buffer value
   CheckBuffer();
 }
@@ -494,16 +462,16 @@ int main(int argc, char* argv[])
 {
   Widget top;
   top = XtVaAppInitialize(&context, "AutoCutSel",
-			  optionDesc, XtNumber(optionDesc), &argc, argv, NULL,
-			  XtNoverrideRedirect, True,
-			  XtNgeometry, "-10-10",
-			  NULL);
+        optionDesc, XtNumber(optionDesc), &argc, argv, NULL,
+        XtNoverrideRedirect, True,
+        XtNgeometry, "-10-10",
+        NULL);
 
   if (argc != 1) Syntax(argv[0]);
 
   XtGetApplicationResources(top, (XtPointer)&options,
-			    resources, XtNumber(resources),
-			    NULL, ZERO );
+          resources, XtNumber(resources),
+          NULL, ZERO );
 
 
   if (strcmp(options.debug_option, "on") == 0)
@@ -536,18 +504,18 @@ int main(int argc, char* argv[])
 #else
       setpgrp(0, 0);
 #endif
-      switch (fork ()) {
+      switch (fork()) {
       case -1:
-      fprintf (stderr, "could not fork, exiting\n");
-      return errno;
-      case  0:
-      sleep (3); /* Wait for father to exit */
-      chdir ("/");
-        TrapSignals ();
-      CloseStdFds ();
-      break;
+        fprintf (stderr, "could not fork, exiting\n");
+        return errno;
+      case 0:
+        sleep(3); /* Wait for father to exit */
+        chdir("/");
+        TrapSignals();
+        CloseStdFds();
+        break;
       default:
-      return 0;
+        return 0;
       }
     }
   }
@@ -570,5 +538,6 @@ int main(int argc, char* argv[])
   XtRealizeWidget(top);
   XUnmapWindow(XtDisplay(top), XtWindow(top));
   XtAppMainLoop(context);
+  
   return 0;
 }
