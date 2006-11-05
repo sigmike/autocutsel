@@ -195,7 +195,7 @@ static void PrintValue(char *value, int length)
 // called when someone requests the selection value
 static Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
                                 Atom *type, XtPointer *value,
-                                unsigned long length, int *format)
+                                unsigned long *length, int *format)
 {
   Display* d = XtDisplay(w);
   XSelectionRequestEvent* req =
