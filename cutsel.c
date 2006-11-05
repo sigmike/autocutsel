@@ -221,7 +221,10 @@ static void SelectionReceived(w, client_data, selection, type, value, received_l
 {
   int length = *received_length;
   
-  if (*type != 0 && *type != XT_CONVERT_FAIL)
+  if (*type == 0)
+    printf("Nobody owns the selection\n");
+  else
+    if (*type != XT_CONVERT_FAIL)
       PrintValue(value, length);
 
   XtFree(value);
