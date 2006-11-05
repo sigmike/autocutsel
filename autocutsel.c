@@ -30,33 +30,7 @@
  * 
  */
 
-
-#include "config.h"
-
-#include <X11/Xmu/Atoms.h>
-#include <X11/Xmu/StdSel.h>
-
-#include <X11/Intrinsic.h>
-#include <X11/StringDefs.h>
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
-#include <X11/Shell.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xaw/Box.h>
-#include <X11/Xaw/Cardinals.h>
-#include <X11/Xmd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <signal.h>
-#include <errno.h>
-
-static Widget box;
-static Display* dpy;
-static XtAppContext context;
-static Atom selection;
-static int buffer;
+#include "common.h"
 
 static XrmOptionDescRec optionDesc[] = {
   {"-selection", "selection", XrmoptionSepArg, NULL},
@@ -77,8 +51,7 @@ static XrmOptionDescRec optionDesc[] = {
   {"-buttonup",  "buttonup",  XrmoptionNoArg,  "on"},
 };
 
-int Syntax(call)
-     char *call;
+int Syntax(char *call)
 {
   fprintf (stderr,
     "usage:  %s [-selection <name>] [-cutbuffer <number>]"
@@ -86,27 +59,6 @@ int Syntax(call)
     call);
   exit (1);
 }
-
-typedef struct {
-  String  selection_name;
-  int     buffer;
-  String  debug_option;
-  String  verbose_option;
-  String  fork_option;
-  String  buttonup_option;
-  String  kill;
-  int     pause;
-  int     debug; 
-  int     verbose; 
-  int     fork;
-  Atom    selection;
-  char*   value;
-  int     length;
-  int     own_selection;
-  int     buttonup;
-} OptionsRec;
-
-OptionsRec options;
 
 #define Offset(field) XtOffsetOf(OptionsRec, field)
 
@@ -157,143 +109,6 @@ static void TrapSignals()
       sigaction (catch, &action, (struct sigaction *) 0);
     }
   }
-}
-
-static void PrintValue(char *value, int length)
-{
-  unsigned char c;
-  int len = 0;
-  
-  putc('"', stdout);
-  for (; length > 0; length--, value++) {
-    c = (unsigned char)*value;
-    switch (c) {
-    case '\n':
-      printf("\\n");
-      break;
-    case '\r':
-      printf("\\r");
-      break;
-    case '\t':
-      printf("\\t");
-      break;
-    default:
-      if (c < 32 || c > 127)
-        printf("\\x%02X", c);
-      else
-        putc(c, stdout);
-    }
-    len++;
-    if (len >= 48) {
-      printf("\"...");
-      return;
-    }
-  }
-  putc('"', stdout);
-}
-  
-// called when someone requests the selection value
-static Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
-                                Atom *type, XtPointer *value,
-                                unsigned long *length, int *format)
-{
-  Display* d = XtDisplay(w);
-  XSelectionRequestEvent* req =
-    XtGetSelectionRequest(w, *selection, (XtRequestId)NULL);
-  
-  if (options.debug) {
-    printf("Window 0x%lx requested %s of selection %s.\n",
-      req->requestor,
-      XGetAtomName(d, *target),
-      XGetAtomName(d, *selection));
-  }
-  
-  if (*target == XA_TARGETS(d)) {
-    Atom *targetP, *atoms;
-    XPointer std_targets;
-    unsigned long std_length;
-    int i;
-    
-    XmuConvertStandardSelection(w, req->time, selection, target, type,
-        &std_targets, &std_length, format);
-    *value = XtMalloc(sizeof(Atom)*(std_length + 4));
-    targetP = *(Atom**)value;
-    atoms = targetP;
-    *length = std_length + 4;
-    *targetP++ = XA_STRING;
-    *targetP++ = XA_TEXT(d);
-    *targetP++ = XA_LENGTH(d);
-    *targetP++ = XA_LIST_LENGTH(d);
-    memmove( (char*)targetP, (char*)std_targets, sizeof(Atom)*std_length);
-    XtFree((char*)std_targets);
-    *type = XA_ATOM;
-    *format = 32;
-    
-    if (options.debug) {
-      printf("Targets are: ");
-      for (i=0; i<*length; i++)
-        printf("%s ", XGetAtomName(d, atoms[i]));
-      printf("\n");
-    }
-
-    return True;
-  }
-  
-  if (*target == XA_STRING || *target == XA_TEXT(d)) {
-    *type = XA_STRING;
-    *value = XtMalloc((Cardinal) options.length);
-    memmove((char *)*value, options.value, options.length);
-    *length = options.length;
-    *format = 8;
-
-    if (options.debug) {
-      printf("Returning ");
-      PrintValue((char*)*value, *length);
-      printf("\n");
-    }
-   
-    return True;
-  }
-  
-  if (*target == XA_LIST_LENGTH(d)) {
-    CARD32 *temp = (CARD32 *) XtMalloc(sizeof(CARD32));
-    *temp = 1L;
-    *value = (XtPointer) temp;
-    *type = XA_INTEGER;
-    *length = 1;
-    *format = 32;
-
-    if (options.debug)
-      printf("Returning %ld\n", *temp);
-
-    return True;
-  }
-  
-  if (*target == XA_LENGTH(d)) {
-    CARD32 *temp = (CARD32 *) XtMalloc(sizeof(CARD32));
-    *temp = options.length;
-    *value = (XtPointer) temp;
-    *type = XA_INTEGER;
-    *length = 1;
-    *format = 32;
-
-    if (options.debug)
-      printf("Returning %ld\n", *temp);
-
-    return True;
-  }
-  
-  if (XmuConvertStandardSelection(w, req->time, selection, target, type,
-          (XPointer *)value, length, format)) {
-    printf("Returning conversion of standard selection\n");
-    return True;
-  }
-   
-  /* else */
-  if (options.debug)
-    printf("Target not supported\n");
-
-  return False;
 }
 
 // Called when we no longer own the selection

@@ -23,7 +23,7 @@ class AutoCutSelTest < Test::Unit::TestCase
     pid = Process.fork {
       exec *command
     }
-    sleep 0.1
+    sleep 0.2
     begin
       yield
     ensure
