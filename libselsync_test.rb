@@ -29,12 +29,14 @@ require 'timeout'
 module SelSync
   extend DL::Importable
   dlload ".libs/libselsync.so"
+  
   extern "struct selsync *selsync_init()"
   extern "int selsync_parse_arguments(struct selsync *, int, char **)"
   extern "void selsync_free(struct selsync *)"
   extern "int selsync_valid(struct selsync *)"
   extern "void selsync_start(struct selsync *)"
   extern "void selsync_process_server_event(struct selsync *)"
+  extern "int selsync_owning_selection(struct selsync *)"
   
   module_function
   def method_missing(method, *args, &block)
@@ -52,7 +54,7 @@ module SelSync
       fullname = "selsync_#{name}"
       if SelSync.respond_to?(fullname)
         result = SelSync.send(fullname, self, *args, &block)
-        struct! 'IISIIIS', :check, :client, :hostname, :port, :socket, :server, :error
+        struct! 'IISIIISII', :check, :client, :hostname, :port, :socket, :server, :error, :widget, :selection
         result
       else
         raise "No method #{name} on #{inspect} nor #{fullname} on #{SelSync.inspect}"
@@ -62,7 +64,6 @@ module SelSync
   end
 end
 
-  
 class TestSelSync < Test::Unit::TestCase
   def test_init
     selsync = SelSync.new
@@ -73,6 +74,8 @@ class TestSelSync < Test::Unit::TestCase
     assert_equal 0, selsync[:port]
     assert_equal 0, selsync[:socket]
     assert_equal 0, selsync[:server]
+    assert_not_equal 0, selsync[:widget]
+    assert_not_equal 0, selsync[:selection]
   end
   
   def test_free
@@ -137,5 +140,14 @@ class TestSelSync < Test::Unit::TestCase
     end
     selsync.process_server_event
     assert_not_equal 0, selsync[:socket]
+  end
+  
+  def test_client_owns_selection_on_start
+    server = TCPServer.new 4567
+    selsync = SelSync.new
+    assert_equal 0, selsync.owning_selection
+    selsync.parse_arguments(3, ["./selsync", "localhost", "4567"])
+    selsync.start
+    assert_equal 1, selsync.owning_selection
   end
 end

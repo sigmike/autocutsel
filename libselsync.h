@@ -21,6 +21,20 @@
  * 
  */
 
+#include <X11/Xmu/Atoms.h>
+#include <X11/Xmu/StdSel.h>
+
+#include <X11/Intrinsic.h>
+#include <X11/StringDefs.h>
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <X11/Shell.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/Xaw/Box.h>
+#include <X11/Xaw/Cardinals.h>
+#include <X11/Xmd.h>
+
 
 struct selsync {
   int magic;
@@ -30,6 +44,8 @@ struct selsync {
   int socket;
   int server;
   char *error;
+  Widget widget;
+  Atom selection;
 };
 
 struct selsync *selsync_init();
@@ -40,3 +56,4 @@ void selsync_start(struct selsync *selsync);
 void selsync_main_loop(struct selsync *selsync);
 
 void selsync_process_server_event(struct selsync *selsync);
+int selsync_owning_selection(struct selsync *selsync);

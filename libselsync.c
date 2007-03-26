@@ -27,9 +27,40 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+
 #include "libselsync.h"
 
 #define MAGIC 0x41545687
+
+void selsync_create_widget(struct selsync *selsync)
+{
+  XtAppContext context;
+  Widget box;
+  Widget top;
+  Display *dpy;
+  int argc = 0;
+  char **argv = NULL;
+  
+  top = XtVaAppInitialize(&context, "selsync",
+        NULL, 0, &argc, &argv, NULL,
+        XtNoverrideRedirect, True,
+        XtNgeometry, "-10-10",
+        NULL);
+
+  box = XtCreateManagedWidget("box", boxWidgetClass, top, NULL, 0);
+  dpy = XtDisplay(top);
+
+  XtRealizeWidget(top);
+  
+  selsync->widget = box;
+  XtVaSetValues(selsync->widget, "selsync", selsync, NULL);
+}
+
+void selsync_init_selection(struct selsync *selsync)
+{
+  Display* d = XtDisplay(selsync->widget);
+  selsync->selection = XInternAtom(d, "PRIMARY", 0);
+}
 
 struct selsync *selsync_init()
 {
@@ -40,6 +71,10 @@ struct selsync *selsync_init()
   selsync->magic = MAGIC;
   selsync->hostname = NULL;
   selsync->port = 0;
+  
+  selsync_create_widget(selsync);
+  selsync_init_selection(selsync);
+  
   return selsync;
 }
 
@@ -125,9 +160,10 @@ void selsync_accept_connections(struct selsync *selsync)
 
 void selsync_start(struct selsync *selsync)
 {
-  if (selsync->client)
+  if (selsync->client) {
     selsync_connect_client(selsync);
-  else
+    selsync_own_selection(selsync);
+  } else
     selsync_accept_connections(selsync);
 }
 
@@ -148,3 +184,34 @@ void selsync_process_server_event(struct selsync *selsync)
   selsync->socket = sock;
 }
 
+Boolean selsync_selection_requested(Widget w, Atom *selection, Atom *target,
+                                    Atom *type, XtPointer *value,
+                                    unsigned long *length, int *format)
+{
+  printf("selection request\n");
+  return False;
+}
+
+void selsync_selection_lost(Widget w, Atom *selection)
+{
+  printf("selection lost\n");
+}
+
+
+int selsync_own_selection(struct selsync *selsync)
+{
+  Display* d = XtDisplay(selsync->widget);
+  if (XtOwnSelection(selsync->widget, selsync->selection,
+                     XtLastTimestampProcessed(d),
+                     selsync_selection_requested, selsync_selection_lost, NULL) == True)
+    return 1;
+  else
+    return 0; 
+}
+
+int selsync_owning_selection(struct selsync *selsync)
+{
+  Window window = XtWindow(selsync->widget);
+  Display* d = XtDisplay(selsync->widget);
+  return (XGetSelectionOwner(d, selsync->selection) == window);
+}
