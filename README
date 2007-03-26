@@ -42,6 +42,9 @@ build the configure script.
 If configure fails because it can't find X or Xaw libraries, you may have to
 install the devel packages of these libraries.
 
+On Ubuntu, you may need to install these packages :
+  sudo apt-get install libc6-dev libxtst-dev xorg-dev
+
 To install it (as root):
  make install
 
