@@ -27,6 +27,9 @@ struct selsync {
   int client;
   char *hostname;
   int port;
+  int socket;
+  int server;
+  char *error;
 };
 
 struct selsync *selsync_init();
@@ -35,3 +38,5 @@ void selsync_free(struct selsync *selsync);
 int selsync_parse_arguments(struct selsync *selsync, int argc, char **argv);
 void selsync_start(struct selsync *selsync);
 void selsync_main_loop(struct selsync *selsync);
+
+void selsync_process_server_event(struct selsync *selsync);

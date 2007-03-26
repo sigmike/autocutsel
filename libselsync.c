@@ -23,6 +23,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 #include "libselsync.h"
 
 #define MAGIC 0x41545687
@@ -30,10 +34,12 @@
 struct selsync *selsync_init()
 {
   struct selsync *selsync;
-  selsync = malloc(sizeof(struct selsync));
+  size_t len = sizeof(struct selsync);
+  selsync = malloc(len);
+  memset(selsync, 0, len);
   selsync->magic = MAGIC;
   selsync->hostname = NULL;
-  selsync->port = -1;
+  selsync->port = 0;
   return selsync;
 }
 
@@ -64,11 +70,81 @@ int selsync_parse_arguments(struct selsync *selsync, int argc, char **argv)
   return 1;
 }
 
+void selsync_connect_client(struct selsync *selsync)
+{
+  struct sockaddr_in addr;
+  int sock;
+  struct hostent* host;
+  host = gethostbyname(selsync->hostname);
+
+  if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+    selsync->error = "unable to create client socket";
+    return;
+  } else {
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family      = AF_INET;
+    addr.sin_addr.s_addr = *(long*)host->h_addr_list[0];
+    addr.sin_port        = htons(selsync->port);
+
+    if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+      selsync->error = "unable to connect client socket";
+      return;
+    }
+    
+    selsync->socket = sock;
+  }
+}
+
+void selsync_accept_connections(struct selsync *selsync)
+{
+  struct sockaddr_in addr;
+  int sock;
+
+  if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+    selsync->error = "unable to create server socket";
+    return;
+  } else {
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family      = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port        = htons(selsync->port);
+
+    if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+      selsync->error = "unable to bind server socket";
+      return;
+    }
+    
+    if (listen(sock, 1) < 0) {
+      selsync->error = "unable to listen server socket";
+      return;
+    }
+    selsync->error = "plop";
+    selsync->server = sock;
+  }
+}
+
 void selsync_start(struct selsync *selsync)
 {
+  if (selsync->client)
+    selsync_connect_client(selsync);
+  else
+    selsync_accept_connections(selsync);
 }
 
 void selsync_main_loop(struct selsync *selsync)
 {
+}
+
+void selsync_process_server_event(struct selsync *selsync)
+{
+  struct sockaddr_in addr;
+  unsigned int len = sizeof(addr);
+  int sock;
+  
+  sock = accept(selsync->server, (struct sockaddr *) &addr, &len);
+  if (sock < 0)
+    return;
+  
+  selsync->socket = sock;
 }
 

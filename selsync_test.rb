@@ -23,6 +23,8 @@
 
 require 'test/unit'
 require 'dl/import'
+require 'socket'
+require 'timeout'
 
 module SelSync
   extend DL::Importable
@@ -31,6 +33,8 @@ module SelSync
   extern "int selsync_parse_arguments(struct selsync *, int, char **)"
   extern "void selsync_free(struct selsync *)"
   extern "int selsync_valid(struct selsync *)"
+  extern "void selsync_start(struct selsync *)"
+  extern "void selsync_process_server_event(struct selsync *)"
   
   module_function
   def method_missing(method, *args, &block)
@@ -48,7 +52,7 @@ module SelSync
       fullname = "selsync_#{name}"
       if SelSync.respond_to?(fullname)
         result = SelSync.send(fullname, self, *args, &block)
-        struct! 'IISI', :check, :client, :hostname, :port
+        struct! 'IISIIIS', :check, :client, :hostname, :port, :socket, :server, :error
         result
       else
         raise "No method #{name} on #{inspect} nor #{fullname} on #{SelSync.inspect}"
@@ -61,16 +65,20 @@ end
   
 class TestSelSync < Test::Unit::TestCase
   def test_init
-    selsync = SelSync.init
+    selsync = SelSync.new
     assert selsync
-    selsync.struct! 'ISI', :check, :hostname, :port
-    assert_equal 1, SelSync.valid(selsync)
+    assert_equal 1, selsync.valid
+    assert_equal 0, selsync[:client]
+    assert_equal nil, selsync[:hostname]
+    assert_equal 0, selsync[:port]
+    assert_equal 0, selsync[:socket]
+    assert_equal 0, selsync[:server]
   end
   
   def test_free
-    selsync = SelSync.init
+    selsync = SelSync.new
     SelSync.free(selsync)
-    assert_equal 0, SelSync.valid(selsync)
+    assert_equal 0, selsync.valid
   end
   
   def test_parse_client_arguments
@@ -98,5 +106,36 @@ class TestSelSync < Test::Unit::TestCase
       selsync = SelSync.new
       assert_equal 0, selsync.parse_arguments(args.size, args.empty? ? nil : args), args.inspect
     end
+  end
+  
+  def test_client_connects
+    %w( 127.0.0.1 localhost ).each do |hostname|
+      server = TCPServer.new 4567
+      selsync = SelSync.new
+      selsync.parse_arguments(3, ["./selsync", hostname, "4567"])
+      selsync.start
+      assert_nothing_raised "connecting to #{hostname}" do
+        timeout 1 do
+          assert server.accept
+        end
+      end
+      server.close
+      assert_not_equal 0, selsync[:socket]
+    end
+  end
+  
+  def test_server_accepts_connection
+    selsync = SelSync.new
+    selsync.parse_arguments(2, ["./selsync", "8857"])
+    selsync.start
+    assert_not_equal 0, selsync[:server], selsync[:error].to_s
+    
+    assert_nothing_raised do
+      timeout 1 do
+        socket = TCPSocket.new "localhost", 8857
+      end
+    end
+    selsync.process_server_event
+    assert_not_equal 0, selsync[:socket]
   end
 end
