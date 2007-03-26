@@ -39,17 +39,9 @@ module SelSync
   extern "int selsync_owning_selection(struct selsync *)"
   
   module_function
-  def method_missing(method, *args, &block)
-    name = "selsync_#{method}"
-    if respond_to? name
-      send(name, *args, &block)
-    else
-      raise "Function #{method} or #{name} not imported in #{inspect}"
-    end
-  end
   
   def new
-    selsync = init
+    selsync = selsync_init
     def selsync.method_missing(name, *args, &block)
       fullname = "selsync_#{name}"
       if SelSync.respond_to?(fullname)
@@ -80,7 +72,7 @@ class TestSelSync < Test::Unit::TestCase
   
   def test_free
     selsync = SelSync.new
-    SelSync.free(selsync)
+    SelSync.selsync_free(selsync)
     assert_equal 0, selsync.valid
   end
   
