@@ -46,6 +46,7 @@ struct selsync {
   char *error;
   Widget widget;
   Atom selection;
+  int debug;
 };
 
 struct selsync *selsync_init();
@@ -55,5 +56,7 @@ int selsync_parse_arguments(struct selsync *selsync, int argc, char **argv);
 void selsync_start(struct selsync *selsync);
 void selsync_main_loop(struct selsync *selsync);
 
-void selsync_process_server_event(struct selsync *selsync);
+void selsync_process_next_event(struct selsync *selsync);
 int selsync_owning_selection(struct selsync *selsync);
+void selsync_print_usage(struct selsync *selsync);
+int selsync_own_selection(struct selsync *selsync);

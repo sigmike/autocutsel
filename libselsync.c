@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -42,7 +43,7 @@ void selsync_create_widget(struct selsync *selsync)
   char **argv = NULL;
   
   top = XtVaAppInitialize(&context, "selsync",
-        NULL, 0, &argc, &argv, NULL,
+        NULL, 0, &argc, argv, NULL,
         XtNoverrideRedirect, True,
         XtNgeometry, "-10-10",
         NULL);
@@ -62,10 +63,31 @@ void selsync_init_selection(struct selsync *selsync)
   selsync->selection = XInternAtom(d, "PRIMARY", 0);
 }
 
+void selsync_error(struct selsync* selsync, char *message)
+{
+  if (selsync->debug)
+    printf("Error: %s\n", message);
+  selsync->error = message;
+}
+
+void selsync_debug(struct selsync* selsync, char *message)
+{
+  if (selsync->debug)
+    printf("Debug: %s\n", message);
+}
+
+void selsync_perror(struct selsync* selsync, char *message)
+{
+  if (selsync->debug)
+    perror(message);
+  selsync->error = message;
+}
+
 struct selsync *selsync_init()
 {
   struct selsync *selsync;
   size_t len = sizeof(struct selsync);
+  
   selsync = malloc(len);
   memset(selsync, 0, len);
   selsync->magic = MAGIC;
@@ -80,6 +102,7 @@ struct selsync *selsync_init()
 
 void selsync_free(struct selsync *selsync)
 {
+  selsync_debug(selsync, "selsync_free");
   selsync->magic = 0;
   free(selsync);
 }
@@ -105,15 +128,25 @@ int selsync_parse_arguments(struct selsync *selsync, int argc, char **argv)
   return 1;
 }
 
+void selsync_print_usage(struct selsync *selsync)
+{
+  printf("usage:\n");
+  printf("server: selsync <port>\n");
+  printf("client: selsync <hostname> <port>\n");
+}
+
 void selsync_connect_client(struct selsync *selsync)
 {
   struct sockaddr_in addr;
   int sock;
   struct hostent* host;
+  
+  selsync_debug(selsync, "selsync_connect_client");
+  
   host = gethostbyname(selsync->hostname);
 
   if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-    selsync->error = "unable to create client socket";
+    selsync_perror(selsync, "unable to create client socket");
     return;
   } else {
     memset(&addr, 0, sizeof(addr));
@@ -122,12 +155,31 @@ void selsync_connect_client(struct selsync *selsync)
     addr.sin_port        = htons(selsync->port);
 
     if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-      selsync->error = "unable to connect client socket";
+      selsync_perror(selsync, "unable to connect client socket");
       return;
     }
     
     selsync->socket = sock;
+    selsync_debug(selsync, "connected");
   }
+}
+
+void selsync_process_server_event(struct selsync *selsync, int *fd, XtInputId *xid)
+{
+  struct sockaddr_in addr;
+  unsigned int len = sizeof(addr);
+  int sock;
+  
+  selsync_debug(selsync, "activity on server socket");
+  
+  sock = accept(selsync->server, (struct sockaddr *) &addr, &len);
+  if (sock < 0) {
+    selsync_perror(selsync, "unable to accept connection");
+    return;
+  }
+  
+  selsync_debug(selsync, "connected");
+  selsync->socket = sock;
 }
 
 void selsync_accept_connections(struct selsync *selsync)
@@ -135,8 +187,10 @@ void selsync_accept_connections(struct selsync *selsync)
   struct sockaddr_in addr;
   int sock;
 
+  selsync_debug(selsync, "selsync_accept_connections");
+  
   if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-    selsync->error = "unable to create server socket";
+    selsync_perror(selsync, "unable to create server socket");
     return;
   } else {
     memset(&addr, 0, sizeof(addr));
@@ -145,21 +199,27 @@ void selsync_accept_connections(struct selsync *selsync)
     addr.sin_port        = htons(selsync->port);
 
     if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-      selsync->error = "unable to bind server socket";
+      selsync_perror(selsync, "unable to bind server socket");
       return;
     }
     
     if (listen(sock, 1) < 0) {
-      selsync->error = "unable to listen server socket";
+      selsync_perror(selsync, "unable to listen server socket");
       return;
     }
-    selsync->error = "plop";
     selsync->server = sock;
+    XtAppAddInput (XtWidgetToApplicationContext(selsync->widget),
+      sock,
+      (XtPointer) (XtInputReadMask|XtInputWriteMask|XtInputExceptMask),
+      selsync_process_server_event,
+      (XtPointer)selsync);
+    selsync_debug(selsync, "listening");
   }
 }
 
 void selsync_start(struct selsync *selsync)
 {
+  selsync_debug(selsync, "selsync_start");
   if (selsync->client) {
     selsync_connect_client(selsync);
     selsync_own_selection(selsync);
@@ -171,36 +231,31 @@ void selsync_main_loop(struct selsync *selsync)
 {
 }
 
-void selsync_process_server_event(struct selsync *selsync)
+void selsync_process_next_event(struct selsync *selsync)
 {
-  struct sockaddr_in addr;
-  unsigned int len = sizeof(addr);
-  int sock;
-  
-  sock = accept(selsync->server, (struct sockaddr *) &addr, &len);
-  if (sock < 0)
-    return;
-  
-  selsync->socket = sock;
+  XtAppProcessEvent(XtWidgetToApplicationContext(selsync->widget), XtIMAll);
 }
 
 Boolean selsync_selection_requested(Widget w, Atom *selection, Atom *target,
                                     Atom *type, XtPointer *value,
                                     unsigned long *length, int *format)
 {
-  printf("selection request\n");
+  //selsync_debug(selsync, "selsync_selection_requested");
   return False;
 }
 
 void selsync_selection_lost(Widget w, Atom *selection)
 {
-  printf("selection lost\n");
+  //selsync_debug(selsync, "selsync_selection_lost");
 }
 
 
 int selsync_own_selection(struct selsync *selsync)
 {
   Display* d = XtDisplay(selsync->widget);
+  
+  selsync_debug(selsync, "selsync_own_selection");
+  
   if (XtOwnSelection(selsync->widget, selsync->selection,
                      XtLastTimestampProcessed(d),
                      selsync_selection_requested, selsync_selection_lost, NULL) == True)

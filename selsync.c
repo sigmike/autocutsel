@@ -28,11 +28,14 @@ int main(int argc, char* argv[])
   struct selsync *selsync;
   
   selsync = selsync_init();
+  selsync->debug = 1;
   if (selsync_parse_arguments(selsync, argc, argv)) {
     selsync_start(selsync);
-    selsync_main_loop(selsync);
+    while (1)
+      selsync_process_next_event(selsync);
     return 0;
-  }
+  } else
+    selsync_print_usage(selsync);
   selsync_free(selsync);
   return 1;
 }

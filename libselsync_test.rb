@@ -35,7 +35,7 @@ module SelSync
   extern "void selsync_free(struct selsync *)"
   extern "int selsync_valid(struct selsync *)"
   extern "void selsync_start(struct selsync *)"
-  extern "void selsync_process_server_event(struct selsync *)"
+  extern "void selsync_process_next_event(struct selsync *)"
   extern "int selsync_owning_selection(struct selsync *)"
   
   module_function
@@ -103,11 +103,10 @@ class TestSelSync < Test::Unit::TestCase
   def test_parse_wrong_arguments
     [
       ["./selsync"],
-      [],
       ["foo", "bar", "baz", "bob"],
     ].each do |args|
       selsync = SelSync.new
-      assert_equal 0, selsync.parse_arguments(args.size, args.empty? ? nil : args), args.inspect
+      assert_equal 0, selsync.parse_arguments(args.size, args), args.inspect
     end
   end
   
@@ -138,7 +137,8 @@ class TestSelSync < Test::Unit::TestCase
         socket = TCPSocket.new "localhost", 8857
       end
     end
-    selsync.process_server_event
+    assert_equal 0, selsync[:socket]
+    selsync.process_next_event
     assert_not_equal 0, selsync[:socket]
   end
   
