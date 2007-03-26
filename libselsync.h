@@ -60,3 +60,5 @@ void selsync_process_next_event(struct selsync *selsync);
 int selsync_owning_selection(struct selsync *selsync);
 void selsync_print_usage(struct selsync *selsync);
 int selsync_own_selection(struct selsync *selsync);
+void selsync_disown_selection(struct selsync *selsync);
+struct selsync *selsync_from_widget(Widget widget);

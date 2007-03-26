@@ -25,13 +25,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 
 #include "libselsync.h"
 
-#define MAGIC 0x41545687
+#define MAGIC 0x20070326
+
+XContext selsync_context = 0;
 
 void selsync_create_widget(struct selsync *selsync)
 {
@@ -54,7 +57,10 @@ void selsync_create_widget(struct selsync *selsync)
   XtRealizeWidget(top);
   
   selsync->widget = box;
-  XtVaSetValues(selsync->widget, "selsync", selsync, NULL);
+  if (selsync_context == 0)
+    selsync_context = XUniqueContext();
+  
+  XSaveContext(dpy, (XID)selsync->widget, selsync_context, (XPointer)selsync);
 }
 
 void selsync_init_selection(struct selsync *selsync)
@@ -104,6 +110,8 @@ void selsync_free(struct selsync *selsync)
 {
   selsync_debug(selsync, "selsync_free");
   selsync->magic = 0;
+  if (selsync->server)
+    close(selsync->server);
   free(selsync);
 }
 
@@ -186,6 +194,7 @@ void selsync_accept_connections(struct selsync *selsync)
 {
   struct sockaddr_in addr;
   int sock;
+  int iopt = 1;
 
   selsync_debug(selsync, "selsync_accept_connections");
   
@@ -202,6 +211,8 @@ void selsync_accept_connections(struct selsync *selsync)
       selsync_perror(selsync, "unable to bind server socket");
       return;
     }
+    
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &iopt, sizeof(iopt));
     
     if (listen(sock, 1) < 0) {
       selsync_perror(selsync, "unable to listen server socket");
@@ -236,17 +247,33 @@ void selsync_process_next_event(struct selsync *selsync)
   XtAppProcessEvent(XtWidgetToApplicationContext(selsync->widget), XtIMAll);
 }
 
-Boolean selsync_selection_requested(Widget w, Atom *selection, Atom *target,
+Boolean selsync_selection_requested(Widget widget, Atom *selection, Atom *target,
                                     Atom *type, XtPointer *value,
                                     unsigned long *length, int *format)
 {
-  //selsync_debug(selsync, "selsync_selection_requested");
+  struct selsync *selsync = selsync_from_widget(widget);
+  selsync_debug(selsync, "selsync_selection_requested");
   return False;
 }
 
-void selsync_selection_lost(Widget w, Atom *selection)
+struct selsync *selsync_from_widget(Widget widget)
 {
-  //selsync_debug(selsync, "selsync_selection_lost");
+  struct selsync *selsync;
+  Display* d = XtDisplay(widget);
+  XFindContext(d, (XID)widget, selsync_context, (XPointer*)&selsync);
+  return selsync;
+}
+
+void selsync_selection_lost(Widget widget, Atom *selection)
+{
+  struct selsync *selsync = selsync_from_widget(widget);
+  char lost;
+  
+  selsync_debug(selsync, "selsync_selection_lost");
+  lost = 6;
+  send(selsync->socket, &lost, sizeof(lost), 0);
+  lost = 2;
+  send(selsync->socket, &lost, sizeof(lost), 0);
 }
 
 
@@ -264,9 +291,18 @@ int selsync_own_selection(struct selsync *selsync)
     return 0; 
 }
 
+void selsync_disown_selection(struct selsync *selsync)
+{
+  Display* d = XtDisplay(selsync->widget);
+  selsync_debug(selsync, "selsync_disown_selection");
+  
+  XtDisownSelection(selsync->widget, selsync->selection, XtLastTimestampProcessed(d));
+}
+
 int selsync_owning_selection(struct selsync *selsync)
 {
   Window window = XtWindow(selsync->widget);
   Display* d = XtDisplay(selsync->widget);
   return (XGetSelectionOwner(d, selsync->selection) == window);
 }
+

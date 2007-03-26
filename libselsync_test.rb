@@ -37,6 +37,7 @@ module SelSync
   extern "void selsync_start(struct selsync *)"
   extern "void selsync_process_next_event(struct selsync *)"
   extern "int selsync_owning_selection(struct selsync *)"
+  extern "void selsync_disown_selection(struct selsync *)"
   
   module_function
   
@@ -132,9 +133,20 @@ class TestSelSync < Test::Unit::TestCase
     assert_equal 0, selsync[:socket]
     selsync.process_next_event
     assert_not_equal 0, selsync[:socket]
+    selsync.free
   end
   
-  def test_client_owns_selection_on_start
+  def __disabled_test_server_reuse_port # not working...
+    server = TCPServer.new 8857
+    server.close
+    selsync = SelSync.new
+    selsync.parse_arguments(2, ["./selsync", "8857"])
+    selsync.start
+    assert_not_equal 0, selsync[:server], selsync[:error].to_s
+    selsync.free
+  end
+  
+  def _test_client_owns_selection_on_start
     server = TCPServer.new 4567
     selsync = SelSync.new
     assert_equal 0, selsync.owning_selection
@@ -142,4 +154,22 @@ class TestSelSync < Test::Unit::TestCase
     selsync.start
     assert_equal 1, selsync.owning_selection
   end
+  
+  def test_client_lost_selection
+    server = TCPServer.new 4567
+    selsync = SelSync.new
+    assert_equal 0, selsync.owning_selection
+    selsync.parse_arguments(3, ["./selsync", "localhost", "4567"])
+    selsync.start
+    selsync.disown_selection
+    assert_equal 0, selsync.owning_selection
+    socket = server.accept
+    assert_nothing_raised do
+      timeout 1 do
+        assert_equal 6, socket.read(1).unpack('c')[0]
+        assert_equal 2, socket.read(1).unpack('c')[0]
+      end
+    end
+  end
+  
 end
