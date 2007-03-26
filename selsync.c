@@ -1,6 +1,6 @@
 /*
  * selsync by Michael Witrant <mike @ lepton . fr>
- * Copyright (c) 2001-2007 Michael Witrant.
+ * Copyright (c) 2007 Michael Witrant.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
