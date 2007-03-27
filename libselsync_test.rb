@@ -178,4 +178,25 @@ class TestSelSync < Test::Unit::TestCase
       end
     end
   end
+  
+  def test_lost_message_received_from_peer
+  end
+  
+  def test_selection_requested_by_an_application
+  end
+  
+  def test_selection_requested_by_peer
+  end
+  
+  def test_selection_value_received
+  end
+  
+  def test_client_lost_connection
+  end
+
+  def test_server_lost_connection
+  end
+  
+  def test_another_client_connects_to_server
+  end
 end
