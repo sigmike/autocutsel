@@ -39,7 +39,8 @@ class SelSync
     extern "void selsync_process_next_event(struct selsync *)"
     extern "int selsync_owning_selection(struct selsync *)"
     extern "void selsync_disown_selection(struct selsync *)"
-    
+    extern "void selsync_set_socket(struct selsync *, int)"
+    extern "int selsync_own_selection(struct selsync *)"
     module_function
     
   end
@@ -65,17 +66,21 @@ class SelSync
 end
 
 class TestSelSync < Test::Unit::TestCase
+  def teardown
+    @selsync.free if @selsync
+  end
+
   def test_init
-    selsync = SelSync.new
-    assert selsync
-    assert_equal 1, selsync.valid
-    assert_equal 0, selsync[:client]
-    assert_equal nil, selsync[:hostname]
-    assert_equal 0, selsync[:port]
-    assert_equal 0, selsync[:socket]
-    assert_equal 0, selsync[:server]
-    assert_not_equal 0, selsync[:widget]
-    assert_not_equal 0, selsync[:selection]
+    @selsync = SelSync.new
+    assert @selsync
+    assert_equal 1, @selsync.valid
+    assert_equal 0, @selsync[:client]
+    assert_equal nil, @selsync[:hostname]
+    assert_equal 0, @selsync[:port]
+    assert_equal 0, @selsync[:socket]
+    assert_equal 0, @selsync[:server]
+    assert_not_equal 0, @selsync[:widget]
+    assert_not_equal 0, @selsync[:selection]
   end
   
   def test_free
@@ -85,19 +90,19 @@ class TestSelSync < Test::Unit::TestCase
   end
   
   def test_parse_client_arguments
-    selsync = SelSync.new
-    assert_equal 1, selsync.parse_arguments(3, ["./selsync", "bob", "4567"])
-    assert_equal 1, selsync[:client]
-    assert_equal "bob", selsync[:hostname].to_s
-    assert_equal 4567, selsync[:port]
+    @selsync = SelSync.new
+    assert_equal 1, @selsync.parse_arguments(3, ["./selsync", "bob", "4567"])
+    assert_equal 1, @selsync[:client]
+    assert_equal "bob", @selsync[:hostname].to_s
+    assert_equal 4567, @selsync[:port]
   end
 
   def test_parse_server_arguments
-    selsync = SelSync.new
-    assert_equal 1, selsync.parse_arguments(2, ["./selsync", "778"])
-    assert_equal 0, selsync[:client]
-    assert_equal nil, selsync[:hostname]
-    assert_equal 778, selsync[:port]
+    @selsync = SelSync.new
+    assert_equal 1, @selsync.parse_arguments(2, ["./selsync", "778"])
+    assert_equal 0, @selsync[:client]
+    assert_equal nil, @selsync[:hostname]
+    assert_equal 778, @selsync[:port]
   end
   
   def test_parse_wrong_arguments
@@ -105,72 +110,64 @@ class TestSelSync < Test::Unit::TestCase
       ["./selsync"],
       ["foo", "bar", "baz", "bob"],
     ].each do |args|
-      selsync = SelSync.new
-      assert_equal 0, selsync.parse_arguments(args.size, args), args.inspect
+      @selsync = SelSync.new
+      assert_equal 0, @selsync.parse_arguments(args.size, args), args.inspect
     end
   end
   
   def test_client_connects
     %w( 127.0.0.1 localhost ).each do |hostname|
       server = TCPServer.new 4567
-      selsync = SelSync.new
-      selsync.parse_arguments(3, ["./selsync", hostname, "4567"])
-      selsync.start
+      @selsync = SelSync.new
+      @selsync.parse_arguments(3, ["./selsync", hostname, "4567"])
+      @selsync.start
       assert_nothing_raised "connecting to #{hostname}" do
         timeout 1 do
           assert server.accept
         end
       end
       server.close
-      assert_not_equal 0, selsync[:socket]
+      assert_not_equal 0, @selsync[:socket]
     end
   end
   
   def test_server_accepts_connection
-    selsync = SelSync.new
-    selsync.parse_arguments(2, ["./selsync", "8859"])
-    selsync.start
-    assert_not_equal 0, selsync[:server], selsync[:error].to_s
+    @selsync = SelSync.new
+    @selsync.parse_arguments(2, ["./selsync", "8859"])
+    @selsync.start
+    assert_not_equal 0, @selsync[:server], @selsync[:error].to_s
     
     assert_nothing_raised do
       timeout 1 do
         socket = TCPSocket.new "localhost", 8859
       end
     end
-    assert_equal 0, selsync[:socket]
-    selsync.process_next_event
-    assert_not_equal 0, selsync[:socket]
-    selsync.free
+    assert_equal 0, @selsync[:socket]
+    @selsync.process_next_event
+    assert_not_equal 0, @selsync[:socket]
   end
   
   def test_server_reuse_port
     2.times do |i|
-      selsync = SelSync.new
-      selsync.parse_arguments(2, ["./selsync", "8857"])
-      selsync.start
-      assert_not_equal 0, selsync[:server], "pass #{i}: #{selsync[:error]}"
-      selsync.free
+      @selsync = SelSync.new
+      @selsync.parse_arguments(2, ["./selsync", "8857"])
+      @selsync.start
+      assert_not_equal 0, @selsync[:server], "pass #{i}: #{@selsync[:error]}"
+      @selsync.free
+      @selsync = nil
     end
   end
   
   def test_client_owns_selection_on_start
     server = TCPServer.new 4568
-    selsync = SelSync.new
-    assert_equal 0, selsync.owning_selection
-    selsync.parse_arguments(3, ["./selsync", "localhost", "4568"])
-    selsync.start
-    assert_equal 1, selsync.owning_selection
+    @selsync = SelSync.new
+    assert_equal 0, @selsync.owning_selection
+    @selsync.parse_arguments(3, ["./selsync", "localhost", "4568"])
+    @selsync.start
+    assert_equal 1, @selsync.owning_selection
   end
   
-  def test_client_lost_selection
-    server = TCPServer.new 4567
-    selsync = SelSync.new
-    assert_equal 0, selsync.owning_selection
-    selsync.parse_arguments(3, ["./selsync", "localhost", "4567"])
-    selsync.start
-    selsync.disown_selection
-    assert_equal 0, selsync.owning_selection
-    socket = server.accept
+  def assert_received_lost_packet socket
     assert_nothing_raised do
       timeout 1 do
         assert_equal 6, socket.read(1).unpack('c')[0]
@@ -179,7 +176,37 @@ class TestSelSync < Test::Unit::TestCase
     end
   end
   
+  def create_client_with_socket
+    server = TCPServer.new 4567
+    selsync_socket = TCPSocket.new 'localhost', 4567
+    @socket = server.accept
+    server.close
+    @selsync = SelSync.new
+    @selsync.set_socket selsync_socket.fileno
+    @selsync.start
+  end
+  
+  def create_client_owning_selection
+    create_client_with_socket
+    @selsync.own_selection
+  end
+  
+  def create_client_not_owning_selection
+    create_client_with_socket
+  end
+  
+  def test_client_lost_selection
+    create_client_owning_selection
+    @selsync.disown_selection
+    assert_equal 0, @selsync.owning_selection
+    assert_received_lost_packet @socket
+  end
+  
   def test_lost_message_received_from_peer
+    create_client_not_owning_selection
+    @socket.send [6, 2].pack('cc'), 0
+    @selsync.process_next_event
+    assert_equal 1, @selsync.owning_selection
   end
   
   def test_selection_requested_by_an_application

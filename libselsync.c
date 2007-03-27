@@ -194,6 +194,7 @@ void selsync_process_server_event(struct selsync *selsync, int *fd, XtInputId *x
   
   selsync_debug(selsync, "connected");
   selsync->socket = sock;
+  selsync_register_socket(selsync);
 }
 
 void selsync_accept_connections(struct selsync *selsync)
@@ -234,14 +235,32 @@ void selsync_accept_connections(struct selsync *selsync)
   }
 }
 
+void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *xid)
+{
+  selsync_debug(selsync, "socket event");
+  selsync_own_selection(selsync);
+}
+
 void selsync_start(struct selsync *selsync)
 {
   selsync_debug(selsync, "selsync_start");
-  if (selsync->client) {
+  if (selsync->socket) {
+    selsync_register_socket(selsync);
+  } else if (selsync->client) {
     selsync_connect_client(selsync);
     selsync_own_selection(selsync);
+    selsync_register_socket(selsync);
   } else
     selsync_accept_connections(selsync);
+}
+
+void selsync_register_socket(struct selsync *selsync)
+{
+  XtAppAddInput(XtWidgetToApplicationContext(selsync->widget),
+    selsync->socket,
+    (XtPointer)XtInputReadMask,
+    (XtInputCallbackProc)selsync_process_socket_event,
+    (XtPointer)selsync);
 }
 
 void selsync_main_loop(struct selsync *selsync)
@@ -314,5 +333,10 @@ int selsync_owning_selection(struct selsync *selsync)
   Window window = XtWindow(selsync->widget);
   Display* d = XtDisplay(selsync->widget);
   return (XGetSelectionOwner(d, selsync->selection) == window);
+}
+
+void selsync_set_socket(struct selsync *selsync, int socket)
+{
+  selsync->socket = socket;
 }
 
