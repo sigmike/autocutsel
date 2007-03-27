@@ -78,6 +78,10 @@ class TestSelSync < Test::Unit::TestCase
     [6, 2].pack('cc')
   end
   
+  def request_message
+    [6, 0].pack('cc')
+  end
+  
   def test_init
     @selsync = SelSync.new
     assert @selsync
@@ -175,10 +179,10 @@ class TestSelSync < Test::Unit::TestCase
     assert_equal 1, @selsync.owning_selection
   end
   
-  def assert_received message, socket, msg = nil
+  def assert_received message, msg = nil
     assert_nothing_raised "while waiting for #{message.inspect}. #{msg}" do
       timeout 1 do
-        assert_equal message, socket.read(message.size), msg
+        assert_equal message, @socket.read(message.size), msg
       end
     end
   end
@@ -206,7 +210,7 @@ class TestSelSync < Test::Unit::TestCase
     create_client_owning_selection
     @selsync.disown_selection
     assert_equal 0, @selsync.owning_selection
-    assert_received lost_message, @socket
+    assert_received lost_message
   end
   
   def test_lost_message_received_from_peer
@@ -217,9 +221,18 @@ class TestSelSync < Test::Unit::TestCase
   end
   
   def test_selection_requested_by_an_application
+    create_client_owning_selection
+    fork do
+      exec "./cutsel -s PRIMARY sel >/dev/null"
+    end
+    4.times do @selsync.process_next_event end
+    assert_received request_message
   end
   
   def test_selection_requested_by_peer
+    create_client_not_owning_selection
+    @socket.write request_message
+    #...
   end
   
   def test_selection_value_received

@@ -237,8 +237,13 @@ void selsync_accept_connections(struct selsync *selsync)
 
 void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *xid)
 {
+  char buffer[32];
+  int size = 32;
+  
   selsync_debug(selsync, "socket event");
-  selsync_own_selection(selsync);
+  size = read(selsync->socket, buffer, 2);
+  if (buffer[1] == 2)
+    selsync_own_selection(selsync);
 }
 
 void selsync_start(struct selsync *selsync)
@@ -278,6 +283,7 @@ Boolean selsync_selection_requested(Widget widget, Atom *selection, Atom *target
 {
   struct selsync *selsync = selsync_from_widget(widget);
   selsync_debug(selsync, "selsync_selection_requested");
+  write(selsync->socket, "\6\0", 2);
   return False;
 }
 
