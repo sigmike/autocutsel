@@ -80,7 +80,7 @@ class AutoCutSelTest < Test::Unit::TestCase
     set_selection "bar", selection do
       run_autocutsel :selection => selection do
         set_buffer value
-        sleep 0.1
+        sleep 0.3
         yield
       end
     end
