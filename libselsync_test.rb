@@ -66,10 +66,18 @@ class SelSync
 end
 
 class TestSelSync < Test::Unit::TestCase
+  def setup
+    @selsync = SelSync.new
+  end
+
   def teardown
     @selsync.free if @selsync
   end
 
+  def lost_message
+    [6, 2].pack('cc')
+  end
+  
   def test_init
     @selsync = SelSync.new
     assert @selsync
@@ -167,11 +175,10 @@ class TestSelSync < Test::Unit::TestCase
     assert_equal 1, @selsync.owning_selection
   end
   
-  def assert_received_lost_packet socket
-    assert_nothing_raised do
+  def assert_received message, socket, msg = nil
+    assert_nothing_raised "while waiting for #{message.inspect}. #{msg}" do
       timeout 1 do
-        assert_equal 6, socket.read(1).unpack('c')[0]
-        assert_equal 2, socket.read(1).unpack('c')[0]
+        assert_equal message, socket.read(message.size), msg
       end
     end
   end
@@ -199,12 +206,12 @@ class TestSelSync < Test::Unit::TestCase
     create_client_owning_selection
     @selsync.disown_selection
     assert_equal 0, @selsync.owning_selection
-    assert_received_lost_packet @socket
+    assert_received lost_message, @socket
   end
   
   def test_lost_message_received_from_peer
     create_client_not_owning_selection
-    @socket.send [6, 2].pack('cc'), 0
+    @socket.write lost_message
     @selsync.process_next_event
     assert_equal 1, @selsync.owning_selection
   end
