@@ -109,9 +109,15 @@ struct selsync *selsync_init()
 void selsync_free(struct selsync *selsync)
 {
   selsync_debug(selsync, "selsync_free");
-  selsync->magic = 0;
-  if (selsync->server)
+  if (selsync->socket) {
+    close(selsync->socket);
+    selsync->socket = 0;
+  }
+  if (selsync->server) {
     close(selsync->server);
+    selsync->server = 0;
+  }
+  selsync->magic = 0;
   free(selsync);
 }
 
@@ -194,7 +200,7 @@ void selsync_accept_connections(struct selsync *selsync)
 {
   struct sockaddr_in addr;
   int sock;
-  int iopt = 1;
+  int on = 1;
 
   selsync_debug(selsync, "selsync_accept_connections");
   
@@ -202,6 +208,8 @@ void selsync_accept_connections(struct selsync *selsync)
     selsync_perror(selsync, "unable to create server socket");
     return;
   } else {
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+    
     memset(&addr, 0, sizeof(addr));
     addr.sin_family      = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -212,8 +220,6 @@ void selsync_accept_connections(struct selsync *selsync)
       return;
     }
     
-    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &iopt, sizeof(iopt));
-    
     if (listen(sock, 1) < 0) {
       selsync_perror(selsync, "unable to listen server socket");
       return;
@@ -221,8 +227,8 @@ void selsync_accept_connections(struct selsync *selsync)
     selsync->server = sock;
     XtAppAddInput (XtWidgetToApplicationContext(selsync->widget),
       sock,
-      (XtPointer) (XtInputReadMask|XtInputWriteMask|XtInputExceptMask),
-      selsync_process_server_event,
+      (XtPointer)XtInputReadMask,
+      (XtInputCallbackProc)selsync_process_server_event,
       (XtPointer)selsync);
     selsync_debug(selsync, "listening");
   }
@@ -258,10 +264,14 @@ Boolean selsync_selection_requested(Widget widget, Atom *selection, Atom *target
 
 struct selsync *selsync_from_widget(Widget widget)
 {
-  struct selsync *selsync;
+  union {
+    struct selsync *selsync;
+    XPointer xpointer;
+  } value;
+  
   Display* d = XtDisplay(widget);
-  XFindContext(d, (XID)widget, selsync_context, (XPointer*)&selsync);
-  return selsync;
+  XFindContext(d, (XID)widget, selsync_context, &value.xpointer);
+  return value.selsync;
 }
 
 void selsync_selection_lost(Widget widget, Atom *selection)

@@ -26,34 +26,41 @@ require 'dl/import'
 require 'socket'
 require 'timeout'
 
-module SelSync
-  extend DL::Importable
-  dlload ".libs/libselsync.so"
+class SelSync
+  module LIB
+    extend DL::Importable
+    dlload ".libs/libselsync.so"
+    
+    extern "struct selsync *selsync_init()"
+    extern "int selsync_parse_arguments(struct selsync *, int, char **)"
+    extern "void selsync_free(struct selsync *)"
+    extern "int selsync_valid(struct selsync *)"
+    extern "void selsync_start(struct selsync *)"
+    extern "void selsync_process_next_event(struct selsync *)"
+    extern "int selsync_owning_selection(struct selsync *)"
+    extern "void selsync_disown_selection(struct selsync *)"
+    
+    module_function
+    
+  end
+
+  def initialize
+    @data = LIB.selsync_init
+  end
   
-  extern "struct selsync *selsync_init()"
-  extern "int selsync_parse_arguments(struct selsync *, int, char **)"
-  extern "void selsync_free(struct selsync *)"
-  extern "int selsync_valid(struct selsync *)"
-  extern "void selsync_start(struct selsync *)"
-  extern "void selsync_process_next_event(struct selsync *)"
-  extern "int selsync_owning_selection(struct selsync *)"
-  extern "void selsync_disown_selection(struct selsync *)"
+  def [](name)
+    @data[name]
+  end
   
-  module_function
-  
-  def new
-    selsync = selsync_init
-    def selsync.method_missing(name, *args, &block)
-      fullname = "selsync_#{name}"
-      if SelSync.respond_to?(fullname)
-        result = SelSync.send(fullname, self, *args, &block)
-        struct! 'IISIIISII', :check, :client, :hostname, :port, :socket, :server, :error, :widget, :selection
-        result
-      else
-        raise "No method #{name} on #{inspect} nor #{fullname} on #{SelSync.inspect}"
-      end
+  def method_missing(name, *args, &block)
+    fullname = "selsync_#{name}"
+    if LIB.respond_to?(fullname)
+      result = LIB.send(fullname, @data, *args, &block)
+      @data.struct! 'IISIIISII', :check, :client, :hostname, :port, :socket, :server, :error, :widget, :selection
+      result
+    else
+      raise "No method #{name} on #{inspect} nor #{fullname} on #{LIB.inspect}"
     end
-    selsync
   end
 end
 
@@ -73,7 +80,7 @@ class TestSelSync < Test::Unit::TestCase
   
   def test_free
     selsync = SelSync.new
-    SelSync.selsync_free(selsync)
+    selsync.free
     assert_equal 0, selsync.valid
   end
   
@@ -121,13 +128,13 @@ class TestSelSync < Test::Unit::TestCase
   
   def test_server_accepts_connection
     selsync = SelSync.new
-    selsync.parse_arguments(2, ["./selsync", "8857"])
+    selsync.parse_arguments(2, ["./selsync", "8859"])
     selsync.start
     assert_not_equal 0, selsync[:server], selsync[:error].to_s
     
     assert_nothing_raised do
       timeout 1 do
-        socket = TCPSocket.new "localhost", 8857
+        socket = TCPSocket.new "localhost", 8859
       end
     end
     assert_equal 0, selsync[:socket]
@@ -136,21 +143,21 @@ class TestSelSync < Test::Unit::TestCase
     selsync.free
   end
   
-  def __disabled_test_server_reuse_port # not working...
-    server = TCPServer.new 8857
-    server.close
-    selsync = SelSync.new
-    selsync.parse_arguments(2, ["./selsync", "8857"])
-    selsync.start
-    assert_not_equal 0, selsync[:server], selsync[:error].to_s
-    selsync.free
+  def test_server_reuse_port
+    2.times do |i|
+      selsync = SelSync.new
+      selsync.parse_arguments(2, ["./selsync", "8857"])
+      selsync.start
+      assert_not_equal 0, selsync[:server], "pass #{i}: #{selsync[:error]}"
+      selsync.free
+    end
   end
   
-  def _test_client_owns_selection_on_start
-    server = TCPServer.new 4567
+  def test_client_owns_selection_on_start
+    server = TCPServer.new 4568
     selsync = SelSync.new
     assert_equal 0, selsync.owning_selection
-    selsync.parse_arguments(3, ["./selsync", "localhost", "4567"])
+    selsync.parse_arguments(3, ["./selsync", "localhost", "4568"])
     selsync.start
     assert_equal 1, selsync.owning_selection
   end
@@ -171,5 +178,4 @@ class TestSelSync < Test::Unit::TestCase
       end
     end
   end
-  
 end
