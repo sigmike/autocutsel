@@ -82,6 +82,10 @@ class TestSelSync < Test::Unit::TestCase
     [6, 0].pack('cc')
   end
   
+  def result_message content
+    [6, 1, content.size, content].pack('ccia*')
+  end
+  
   def test_init
     @selsync = SelSync.new
     assert @selsync
@@ -222,17 +226,32 @@ class TestSelSync < Test::Unit::TestCase
   
   def test_selection_requested_by_an_application
     create_client_owning_selection
-    fork do
-      exec "./cutsel -s PRIMARY sel >/dev/null"
+    pid = fork do
+      exec "./cutsel -s PRIMARY sel >test_result"
     end
-    4.times do @selsync.process_next_event end
+    @socket.write result_message("foo") # FIXME: should be after received request_message
+    5.times do @selsync.process_next_event end
     assert_received request_message
+    timeout 10 do
+      Process.waitpid pid
+    end
+    assert_equal "foo\n", File.read("test_result")
   end
   
   def test_selection_requested_by_peer
+    pid = fork do
+      exec "./cutsel -s PRIMARY sel bob"
+    end
+    sleep 0.1
+    
     create_client_not_owning_selection
     @socket.write request_message
-    #...
+    
+    5.times do
+      @selsync.process_next_event
+    end
+    
+    assert_received result_message("bob")
   end
   
   def test_selection_value_received

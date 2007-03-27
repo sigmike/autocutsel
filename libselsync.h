@@ -47,6 +47,8 @@ struct selsync {
   Widget widget;
   Atom selection;
   int debug;
+  char *result;
+  size_t result_size;
 };
 
 struct selsync *selsync_init();

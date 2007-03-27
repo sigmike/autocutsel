@@ -235,6 +235,32 @@ void selsync_accept_connections(struct selsync *selsync)
   }
 }
 
+void selsync_selection_value_received(Widget widget, XtPointer client_data, Atom *selection,
+                                      Atom *type, XtPointer value,
+                                      unsigned long *received_length, int *format)
+{
+  struct selsync *selsync = selsync_from_widget(widget);
+  char *content;
+  int len;
+  
+  if (*type == 0) {
+    content = "[nobody owns the selection]";
+    len = strlen(content);
+  } else if (*type == XA_STRING) {
+    content = (char*)value;
+    len = *received_length;
+  } else {
+    content = "[invalid type received]";
+    len = strlen(content);
+  }
+
+  write(selsync->socket, "\6\1", 2);
+  write(selsync->socket, &len, 4);
+  write(selsync->socket, content, len);
+  
+  XtFree(value);
+}
+
 void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *xid)
 {
   char buffer[32];
@@ -242,8 +268,21 @@ void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *x
   
   selsync_debug(selsync, "socket event");
   size = read(selsync->socket, buffer, 2);
-  if (buffer[1] == 2)
-    selsync_own_selection(selsync);
+  switch (buffer[1]) {
+    case 0:
+      XtGetSelectionValue(selsync->widget, selsync->selection, XA_STRING,
+        selsync_selection_value_received, NULL, CurrentTime);
+      break;
+    case 1:
+      read(selsync->socket, &size, 4);
+      selsync->result_size = size;
+      selsync->result = malloc(selsync->result_size);
+      read(selsync->socket, selsync->result, size);
+      break;
+    case 2:
+      selsync_own_selection(selsync);
+      break;
+  }
 }
 
 void selsync_start(struct selsync *selsync)
@@ -282,8 +321,44 @@ Boolean selsync_selection_requested(Widget widget, Atom *selection, Atom *target
                                     unsigned long *length, int *format)
 {
   struct selsync *selsync = selsync_from_widget(widget);
+  char *buffer;
+  size_t len;
+  char major, minor;
+  
+    
   selsync_debug(selsync, "selsync_selection_requested");
+  
+  //FIXME: remove comment
+  //selsync->value = NULL;
   write(selsync->socket, "\6\0", 2);
+  
+  while (!selsync->result) {
+    selsync_process_next_event(selsync);
+  }
+  
+  /*
+  read(selsync->socket, &major, 1);
+  printf("%x\n", major);
+  read(selsync->socket, &minor, 1);
+  printf("%x\n", minor);
+  read(selsync->socket, &len, 4);
+  printf("len: %d\n", len);
+  buffer = malloc(len);
+  read(selsync->socket, buffer, len);
+  */
+  
+  buffer = selsync->result;
+  len = selsync->result_size;
+  
+  if (*target == XA_STRING) {
+    *type = XA_STRING;
+    *value = XtMalloc((Cardinal) len);
+    memmove((char *)*value, buffer, len);
+    *length = len;
+    *format = 8;
+
+    return True;
+  }
   return False;
 }
 
