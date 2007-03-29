@@ -316,6 +316,12 @@ void selsync_process_next_event(struct selsync *selsync)
   XtAppProcessEvent(XtWidgetToApplicationContext(selsync->widget), XtIMAll);
 }
 
+void selsync_process_next_events(struct selsync *selsync)
+{
+  while (XtAppPending(XtWidgetToApplicationContext(selsync->widget)))
+    selsync_process_next_event(selsync);
+}
+
 Boolean selsync_selection_requested(Widget widget, Atom *selection, Atom *target,
                                     Atom *type, XtPointer *value,
                                     unsigned long *length, int *format)
@@ -332,9 +338,11 @@ Boolean selsync_selection_requested(Widget widget, Atom *selection, Atom *target
   //selsync->value = NULL;
   write(selsync->socket, "\6\0", 2);
   
+  /*
   while (!selsync->result) {
     selsync_process_next_event(selsync);
   }
+  */
   
   /*
   read(selsync->socket, &major, 1);
@@ -386,19 +394,71 @@ void selsync_selection_lost(Widget widget, Atom *selection)
   send(selsync->socket, &lost, sizeof(lost), 0);
 }
 
+void selsync_handle_selection_event(
+    Widget widget,
+    XtPointer closure,
+    XEvent *event,
+    Boolean *cont)
+{
+  Display* d = XtDisplay(widget);
+  int format;
+  char *buffer;
+  size_t len;
+  Atom type;
+  Atom target;
+  XSelectionEvent ev;
+  struct selsync *selsync = selsync_from_widget(widget);
+  char *value;
+
+  switch (event->type) {
+  case SelectionClear:
+    selsync_selection_lost(widget, event->xselectionclear.selection);
+    break;
+    
+  case SelectionRequest:
+    target = event->xselectionrequest.target;
+    
+    write(selsync->socket, "\6\0", 2);
+    buffer = selsync->result;
+    len = selsync->result_size;
+    if (target == XA_STRING) {
+      type = XA_STRING;
+      value = XtMalloc((Cardinal) len);
+      memmove(value, buffer, len);
+      format = 8;
+      
+      XChangeProperty(d, event->xselectionrequest.requestor, event->xselectionrequest.property,
+        target, format, PropModeReplace,
+        (unsigned char *)value, (int)len);
+      
+      ev.type = SelectionNotify;
+      ev.display = event->xselectionrequest.display;
+      ev.requestor = event->xselectionrequest.requestor;
+      ev.selection = event->xselectionrequest.selection;
+      ev.time = event->xselectionrequest.time;
+      ev.target = event->xselectionrequest.target;
+      ev.property = event->xselectionrequest.property;
+      XSendEvent(d, ev.requestor, False, (unsigned long)NULL, (XEvent *) &ev);
+    }
+    break;
+  }
+}
 
 int selsync_own_selection(struct selsync *selsync)
 {
   Display* d = XtDisplay(selsync->widget);
+  Window window;
   
   selsync_debug(selsync, "selsync_own_selection");
   
-  if (XtOwnSelection(selsync->widget, selsync->selection,
-                     XtLastTimestampProcessed(d),
-                     selsync_selection_requested, selsync_selection_lost, NULL) == True)
-    return 1;
-  else
-    return 0; 
+  window = XtWindow(selsync->widget);
+  
+  XSetSelectionOwner(d, selsync->selection, window, XtLastTimestampProcessed(d));
+  if (XGetSelectionOwner(d, selsync->selection) != window)
+    return 0;
+  XtAddEventHandler(selsync->widget, (EventMask)0, TRUE,
+    selsync_handle_selection_event, (XtPointer)selsync);
+  return 0; 
 }
 
 void selsync_disown_selection(struct selsync *selsync)
@@ -406,7 +466,7 @@ void selsync_disown_selection(struct selsync *selsync)
   Display* d = XtDisplay(selsync->widget);
   selsync_debug(selsync, "selsync_disown_selection");
   
-  XtDisownSelection(selsync->widget, selsync->selection, XtLastTimestampProcessed(d));
+  XSetSelectionOwner(d, selsync->selection, None, XtLastTimestampProcessed(d));
 }
 
 int selsync_owning_selection(struct selsync *selsync)
@@ -421,3 +481,7 @@ void selsync_set_socket(struct selsync *selsync, int socket)
   selsync->socket = socket;
 }
 
+void selsync_set_debug(struct selsync *selsync, int level)
+{
+  selsync->debug = level;
+}

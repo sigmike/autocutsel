@@ -59,9 +59,11 @@ void selsync_start(struct selsync *selsync);
 void selsync_main_loop(struct selsync *selsync);
 
 void selsync_process_next_event(struct selsync *selsync);
+void selsync_process_next_events(struct selsync *selsync);
 int selsync_owning_selection(struct selsync *selsync);
 void selsync_print_usage(struct selsync *selsync);
 int selsync_own_selection(struct selsync *selsync);
 void selsync_disown_selection(struct selsync *selsync);
 struct selsync *selsync_from_widget(Widget widget);
 void selsync_set_socket(struct selsync *selsync, int socket);
+void selsync_set_debug(struct selsync *selsync, int level);

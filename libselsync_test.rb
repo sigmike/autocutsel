@@ -37,10 +37,12 @@ class SelSync
     extern "int selsync_valid(struct selsync *)"
     extern "void selsync_start(struct selsync *)"
     extern "void selsync_process_next_event(struct selsync *)"
+    extern "void selsync_process_next_events(struct selsync *)"
     extern "int selsync_owning_selection(struct selsync *)"
     extern "void selsync_disown_selection(struct selsync *)"
     extern "void selsync_set_socket(struct selsync *, int)"
     extern "int selsync_own_selection(struct selsync *)"
+    extern "void selsync_set_debug(struct selsync *, int)"
     module_function
     
   end
@@ -213,6 +215,7 @@ class TestSelSync < Test::Unit::TestCase
   def test_client_lost_selection
     create_client_owning_selection
     @selsync.disown_selection
+    @selsync.process_next_events
     assert_equal 0, @selsync.owning_selection
     assert_received lost_message
   end
@@ -230,7 +233,8 @@ class TestSelSync < Test::Unit::TestCase
       exec "./cutsel -s PRIMARY sel >test_result"
     end
     @socket.write result_message("foo") # FIXME: should be after received request_message
-    5.times do @selsync.process_next_event end
+    sleep 0.1
+    @selsync.process_next_events
     assert_received request_message
     timeout 10 do
       Process.waitpid pid
