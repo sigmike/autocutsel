@@ -43,23 +43,48 @@ class SelSync
     extern "void selsync_set_socket(struct selsync *, int)"
     extern "int selsync_own_selection(struct selsync *)"
     extern "void selsync_set_debug(struct selsync *, int)"
+    extern "void selsync_set_reconnect_delay(struct selsync *, int)"
     module_function
     
   end
 
   def initialize
     @data = LIB.selsync_init
+    @struct_info = [""]
+    [
+      ['I', :magic],
+      ['I', :client],
+      ['S', :hostname],
+      ['I', :port],
+      ['I', :socket],
+      ['I', :server],
+      ['S', :error],
+      ['I', :widget],
+      ['I', :selection],
+      ['I', :debug],
+      ['P', :selection_event],
+      ['I', :input_id],
+      ['I', :reconnect_delay],
+    ].each do |type, name|
+      @struct_info.first << type
+      @struct_info << name
+    end
+    parse_data
   end
   
   def [](name)
     @data[name]
   end
   
+  def parse_data
+    @data.struct! *@struct_info
+  end
+  
   def method_missing(name, *args, &block)
     fullname = "selsync_#{name}"
     if LIB.respond_to?(fullname)
       result = LIB.send(fullname, @data, *args, &block)
-      @data.struct! 'IISIIISII', :check, :client, :hostname, :port, :socket, :server, :error, :widget, :selection
+      parse_data
       result
     else
       raise "No method #{name} on #{inspect} nor #{fullname} on #{LIB.inspect}"
@@ -86,6 +111,16 @@ class TestSelSync < Test::Unit::TestCase
   
   def result_message content
     [6, 1, content.size, content].pack('ccia*')
+  end
+  
+  def assert_no_timeout msg = nil, delay = 1
+    begin
+      timeout delay do
+        yield
+      end
+    rescue Timeout::Error
+      assert false, "execution timed out. #{msg}"
+    end
   end
   
   def test_init
@@ -177,10 +212,10 @@ class TestSelSync < Test::Unit::TestCase
   end
   
   def test_client_owns_selection_on_start
-    server = TCPServer.new 4568
+    server = TCPServer.new 45699
     @selsync = SelSync.new
     assert_equal 0, @selsync.owning_selection
-    @selsync.parse_arguments(3, ["./selsync", "localhost", "4568"])
+    @selsync.parse_arguments(3, ["./selsync", "localhost", "45699"])
     @selsync.start
     assert_equal 1, @selsync.owning_selection
   end
@@ -195,11 +230,11 @@ class TestSelSync < Test::Unit::TestCase
   
   def create_client_with_socket
     server = TCPServer.new 4567
-    selsync_socket = TCPSocket.new 'localhost', 4567
+    @selsync_socket = TCPSocket.new 'localhost', 4567
     @socket = server.accept
     server.close
     @selsync = SelSync.new
-    @selsync.set_socket selsync_socket.fileno
+    @selsync.set_socket @selsync_socket.fileno
     @selsync.start
   end
   
@@ -262,7 +297,46 @@ class TestSelSync < Test::Unit::TestCase
   def test_selection_value_received
   end
   
-  def test_client_lost_connection
+  def test_client_reconnects_on_connection_lost
+    server = TCPServer.new 4568
+    @selsync = SelSync.new
+    assert_equal 0, @selsync.owning_selection
+    @selsync.parse_arguments(3, ["./selsync", "localhost", "4568"])
+    @selsync.start
+    socket = server.accept
+    socket.close
+    @selsync.process_next_events
+    assert_no_timeout "accept" do
+      server.accept
+    end
+  end
+
+  def test_client_reconnects_forever_on_connection_lost
+    server = TCPServer.new 41688
+    @selsync = SelSync.new
+    assert_equal 0, @selsync.owning_selection
+    @selsync.parse_arguments(3, ["./selsync", "localhost", "41688"])
+    @selsync.start
+    socket = server.accept
+    
+    @selsync.set_reconnect_delay 10
+    
+    3.times do
+      socket.close
+      server.close
+      @selsync.process_next_events
+      sleep 0.015
+      server = TCPServer.new 41688
+      @selsync.process_next_events
+      socket = assert_no_timeout "accept" do
+        server.accept
+      end
+    end
+  end
+  
+  def test_default_reconnect_delay
+    @selsync = SelSync.new
+    assert_equal 500, @selsync[:reconnect_delay]
   end
 
   def test_server_lost_connection

@@ -42,7 +42,13 @@ static XrmOptionDescRec optionDesc[] = {
 int Syntax(char *call)
 {
   fprintf (stderr,
-    "usage:  %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] cut|sel [value]\n",
+    "usage:  %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] cut|sel [<value>]\n",
+    call);
+  fprintf (stderr,
+    "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] targets\n",
+    call);
+  fprintf (stderr,
+    "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] length\n",
     call);
   exit (1);
 }

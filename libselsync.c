@@ -97,8 +97,7 @@ struct selsync *selsync_init()
   selsync = malloc(len);
   memset(selsync, 0, len);
   selsync->magic = MAGIC;
-  selsync->hostname = NULL;
-  selsync->port = 0;
+  selsync->reconnect_delay = 500;
   
   selsync_create_widget(selsync);
   selsync_init_selection(selsync);
@@ -149,11 +148,22 @@ void selsync_print_usage(struct selsync *selsync)
   printf("client: selsync <hostname> <port>\n");
 }
 
+void selsync_set_reconnect_delay(struct selsync *selsync, int milliseconds)
+{
+  selsync->reconnect_delay = milliseconds;
+}
+
+void selsync_reconnect_timeout(struct selsync *selsync, XtIntervalId* i)
+{
+  selsync_connect_client(selsync);
+}
+
 void selsync_connect_client(struct selsync *selsync)
 {
   struct sockaddr_in addr;
   int sock;
   struct hostent* host;
+  int failure;
   
   selsync_debug(selsync, "selsync_connect_client");
   
@@ -161,7 +171,7 @@ void selsync_connect_client(struct selsync *selsync)
 
   if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
     selsync_perror(selsync, "unable to create client socket");
-    return;
+    failure = 1;
   } else {
     memset(&addr, 0, sizeof(addr));
     addr.sin_family      = AF_INET;
@@ -170,12 +180,17 @@ void selsync_connect_client(struct selsync *selsync)
 
     if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
       selsync_perror(selsync, "unable to connect client socket");
-      return;
+      failure = 1;
+    } else {
+      selsync->socket = sock;
+      selsync_debug(selsync, "connected");
+      failure = 0;
+      selsync_register_socket(selsync);
     }
-    
-    selsync->socket = sock;
-    selsync_debug(selsync, "connected");
   }
+  if (failure)
+    XtAppAddTimeOut(XtWidgetToApplicationContext(selsync->widget), selsync->reconnect_delay,
+      selsync_reconnect_timeout, (XPointer)selsync);
 }
 
 void selsync_process_server_event(struct selsync *selsync, int *fd, XtInputId *xid)
@@ -261,6 +276,11 @@ void selsync_selection_value_received(Widget widget, XtPointer client_data, Atom
   XtFree(value);
 }
 
+void selsync_reconnect(struct selsync *selsync)
+{
+  selsync_connect_client(selsync);
+}
+
 void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *xid)
 {
   char buffer[32];
@@ -268,31 +288,40 @@ void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *x
   XSelectionEvent *ev;
   Display* d;
   char *value;
+  char message;
+  char selsync_message;
   
   selsync_debug(selsync, "socket event");
-  size = read(selsync->socket, buffer, 2);
-  switch (buffer[1]) {
-    case 0:
-      XtGetSelectionValue(selsync->widget, selsync->selection, XA_STRING,
-        selsync_selection_value_received, NULL, CurrentTime);
-      break;
-    case 1:
-      d = XtDisplay(selsync->widget);
-      ev = selsync->selection_event;
-      read(selsync->socket, &size, 4);
-      value = malloc(size);
-      read(selsync->socket, value, size);
-      XChangeProperty(d, ev->requestor, ev->property,
-        XA_STRING, 8, PropModeReplace,
-        (unsigned char *)value, (int)size);
-      
-      XSendEvent(d, ev->requestor, False, (unsigned long)NULL, (XEvent *)ev);
-      
-      XtFree((XPointer)ev);
-      break;
-    case 2:
-      selsync_own_selection(selsync);
-      break;
+  size = read(selsync->socket, &message, 1);
+  if (size == 1) {
+    size = read(selsync->socket, &selsync_message, 1);
+    switch (selsync_message) {
+      case 0:
+        XtGetSelectionValue(selsync->widget, selsync->selection, XA_STRING,
+          selsync_selection_value_received, NULL, CurrentTime);
+        break;
+      case 1:
+        d = XtDisplay(selsync->widget);
+        ev = selsync->selection_event;
+        read(selsync->socket, &size, 4);
+        value = malloc(size);
+        read(selsync->socket, value, size);
+        XChangeProperty(d, ev->requestor, ev->property,
+          XA_STRING, 8, PropModeReplace,
+          (unsigned char *)value, (int)size);
+        
+        XSendEvent(d, ev->requestor, False, (unsigned long)NULL, (XEvent *)ev);
+        
+        XtFree((XPointer)ev);
+        break;
+      case 2:
+        selsync_own_selection(selsync);
+        break;
+    }
+  } else {
+    selsync_debug(selsync, "disconnected");
+    XtRemoveInput(selsync->input_id);
+    selsync_reconnect(selsync);
   }
 }
 
@@ -304,14 +333,13 @@ void selsync_start(struct selsync *selsync)
   } else if (selsync->client) {
     selsync_connect_client(selsync);
     selsync_own_selection(selsync);
-    selsync_register_socket(selsync);
   } else
     selsync_accept_connections(selsync);
 }
 
 void selsync_register_socket(struct selsync *selsync)
 {
-  XtAppAddInput(XtWidgetToApplicationContext(selsync->widget),
+  selsync->input_id = XtAppAddInput(XtWidgetToApplicationContext(selsync->widget),
     selsync->socket,
     (XtPointer)XtInputReadMask,
     (XtInputCallbackProc)selsync_process_socket_event,

@@ -48,6 +48,8 @@ struct selsync {
   Atom selection;
   int debug;
   XSelectionEvent *selection_event;
+  XtInputId input_id;
+  int reconnect_delay;
 };
 
 struct selsync *selsync_init();
@@ -67,3 +69,4 @@ struct selsync *selsync_from_widget(Widget widget);
 void selsync_set_socket(struct selsync *selsync, int socket);
 void selsync_set_debug(struct selsync *selsync, int level);
 void selsync_register_socket(struct selsync *selsync);
+void selsync_set_reconnect_delay(struct selsync *selsync, int milliseconds);
