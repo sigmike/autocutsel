@@ -232,14 +232,15 @@ class TestSelSync < Test::Unit::TestCase
     pid = fork do
       exec "./cutsel -s PRIMARY sel >test_result"
     end
-    @socket.write result_message("foo") # FIXME: should be after received request_message
     sleep 0.1
     @selsync.process_next_events
     assert_received request_message
+    @socket.write result_message("foo bar")
+    @selsync.process_next_events
     timeout 10 do
       Process.waitpid pid
     end
-    assert_equal "foo\n", File.read("test_result")
+    assert_equal "foo bar\n", File.read("test_result")
   end
   
   def test_selection_requested_by_peer
