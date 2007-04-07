@@ -183,6 +183,21 @@ class TestSelSync < Test::Unit::TestCase
     assert_no_timeout "accept" do
       @server.accept
     end
+    @selsync.process_next_events
+  end
+  
+  def test_client_owns_selection_on_reconnect
+    create_client
+    @selsync.disown_selection
+    @selsync.process_next_events
+    assert_equal 0, @selsync.owning_selection
+    @socket.close
+    @selsync.process_next_events
+    assert_no_timeout "accept" do
+      @server.accept
+    end
+    @selsync.process_next_events
+    assert_equal 1, @selsync.owning_selection
   end
 
   def test_client_reconnects_forever_on_connection_lost
@@ -244,9 +259,12 @@ class TestSelSync < Test::Unit::TestCase
     assert_raises Errno::EAGAIN, "message received on socket" do
       @socket.read_nonblock(128)
     end
-    timeout 10 do
+    timeout 0.1 do
       Process.waitpid pid
     end
     assert_match /^STRING$/, File.read("test_result")
+  end
+  
+  def test_request_utf8_string
   end
 end

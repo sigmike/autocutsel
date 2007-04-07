@@ -186,6 +186,7 @@ void selsync_connect_client(struct selsync *selsync)
       selsync_debug(selsync, "connected");
       failure = 0;
       selsync_register_socket(selsync);
+      selsync_own_selection(selsync);
     }
   }
   if (failure)
@@ -263,17 +264,22 @@ void selsync_selection_value_received(Widget widget, XtPointer client_data, Atom
   char *content;
   int len;
   
+  selsync_debug(selsync, "selsync_selection_value_received");
   if (*type == 0) {
     content = "[nobody owns the selection]";
     len = strlen(content);
+    selsync_debug(selsync, "nobody owns the selection");
   } else if (*type == XA_STRING) {
+    selsync_debug(selsync, "selection value received as string");
     content = (char*)value;
     len = *received_length;
   } else {
     content = "[invalid type received]";
     len = strlen(content);
+    selsync_error(selsync, "invalid type received");
   }
 
+  selsync_debug(selsync, "sending result packet");
   write(selsync->socket, "\6\1", 2);
   write(selsync->socket, &len, 4);
   write(selsync->socket, content, len);
@@ -302,10 +308,12 @@ void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *x
     size = read(selsync->socket, &selsync_message, 1);
     switch (selsync_message) {
       case 0:
+        selsync_debug(selsync, "request packet received");
         XtGetSelectionValue(selsync->widget, selsync->selection, XA_STRING,
           selsync_selection_value_received, NULL, CurrentTime);
         break;
       case 1:
+        selsync_debug(selsync, "result packet received");
         d = XtDisplay(selsync->widget);
         ev = selsync->selection_event;
         read(selsync->socket, &size, 4);
@@ -320,8 +328,11 @@ void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *x
         XtFree((XPointer)ev);
         break;
       case 2:
+        selsync_debug(selsync, "selection lost packet received");
         selsync_own_selection(selsync);
         break;
+      default:
+        selsync_error(selsync, "unknown packet received");
     }
   } else {
     selsync_debug(selsync, "disconnected");
@@ -338,7 +349,6 @@ void selsync_start(struct selsync *selsync)
     selsync_register_socket(selsync);
   } else if (selsync->client) {
     selsync_connect_client(selsync);
-    selsync_own_selection(selsync);
   } else
     selsync_accept_connections(selsync);
 }
@@ -407,6 +417,7 @@ void selsync_handle_selection_event(
     display = event->xselectionrequest.display;
     
     if (target == XA_STRING) {
+      selsync_debug(selsync, "selection requested as string");
       write(selsync->socket, "\6\0", 2);
       ev = (XSelectionEvent*)XtMalloc((Cardinal) sizeof(XSelectionEvent));
       ev->type = SelectionNotify;
@@ -420,8 +431,10 @@ void selsync_handle_selection_event(
       selsync->selection_event = ev;
     } else if (target == XA_TARGETS(display)) {
       int size = 1;
-      Atom **targets = (Atom**)XtMalloc(sizeof(Atom) * size);
+      Atom *targets = (Atom*)XtMalloc(sizeof(Atom) * size);
       *targets = XA_STRING;
+      
+      selsync_debug(selsync, "target list requested");
       
       ev = (XSelectionEvent*)XtMalloc((Cardinal) sizeof(XSelectionEvent));
       ev->type = SelectionNotify;
@@ -440,8 +453,21 @@ void selsync_handle_selection_event(
       
       XtFree((XPointer)ev);
     } else {
-      selsync_error(selsync, "invalid target in request:");
-      selsync_error(selsync, XGetAtomName(display, target));
+      selsync_debug(selsync, "unknown target requested:");
+      selsync_debug(selsync, XGetAtomName(display, target));
+    
+      ev = (XSelectionEvent*)XtMalloc((Cardinal) sizeof(XSelectionEvent));
+      ev->type = SelectionNotify;
+      ev->display = event->xselectionrequest.display;
+      ev->requestor = event->xselectionrequest.requestor;
+      ev->selection = event->xselectionrequest.selection;
+      ev->time = event->xselectionrequest.time;
+      ev->target = event->xselectionrequest.target;
+      ev->property = None;
+      
+      XSendEvent(display, ev->requestor, False, (unsigned long)NULL, (XEvent *)ev);
+      
+      XtFree((XPointer)ev);
     }
     
     break;
@@ -457,12 +483,14 @@ int selsync_own_selection(struct selsync *selsync)
   
   window = XtWindow(selsync->widget);
   
-  XSetSelectionOwner(d, selsync->selection, window, XtLastTimestampProcessed(d));
-  if (XGetSelectionOwner(d, selsync->selection) != window)
+  XSetSelectionOwner(d, selsync->selection, window, CurrentTime);
+  if (XGetSelectionOwner(d, selsync->selection) != window) {
+    selsync_error(selsync, "unable to own selection");
     return 0;
+  }
   XtAddEventHandler(selsync->widget, (EventMask)0, TRUE,
     selsync_handle_selection_event, (XtPointer)selsync);
-  return 0; 
+  return 1;
 }
 
 void selsync_disown_selection(struct selsync *selsync)
