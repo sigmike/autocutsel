@@ -111,15 +111,16 @@ module SelSyncTestHelper
   end
   
   def create_server
+    @port = 8859
     @selsync = SelSync.new
-    @selsync.parse_arguments(2, ["./selsync", "8859"])
+    @selsync.parse_arguments(2, ["./selsync", @port.to_s])
     @selsync.start
   end
   
   def connect_socket
     assert_nothing_raised do
       timeout 1 do
-        @socket = TCPSocket.new "localhost", 8859
+        @socket = TCPSocket.new "localhost", @port
       end
     end
   end
@@ -133,8 +134,9 @@ module SelSyncTestHelper
   end
   
   def create_client_with_socket
-    server = TCPServer.new 4567
-    @selsync_socket = TCPSocket.new 'localhost', 4567
+    @port = 4567
+    server = TCPServer.new @port
+    @selsync_socket = TCPSocket.new 'localhost', @port
     @socket = server.accept
     server.close
     @selsync = SelSync.new

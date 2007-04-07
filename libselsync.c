@@ -97,7 +97,7 @@ struct selsync *selsync_init()
   selsync = malloc(len);
   memset(selsync, 0, len);
   selsync->magic = MAGIC;
-  selsync->reconnect_delay = 500;
+  selsync->reconnect_delay = 1000;
   
   selsync_create_widget(selsync);
   selsync_init_selection(selsync);
@@ -190,7 +190,7 @@ void selsync_connect_client(struct selsync *selsync)
   }
   if (failure)
     XtAppAddTimeOut(XtWidgetToApplicationContext(selsync->widget), selsync->reconnect_delay,
-      selsync_reconnect_timeout, (XPointer)selsync);
+      (XtTimerCallbackProc)selsync_reconnect_timeout, (XPointer)selsync);
 }
 
 void selsync_process_server_event(struct selsync *selsync, int *fd, XtInputId *xid)
@@ -207,9 +207,14 @@ void selsync_process_server_event(struct selsync *selsync, int *fd, XtInputId *x
     return;
   }
   
-  selsync_debug(selsync, "connected");
-  selsync->socket = sock;
-  selsync_register_socket(selsync);
+  if (selsync->socket) {
+    selsync_debug(selsync, "closing incoming connection: already connected");
+    close(sock);
+  } else {
+    selsync_debug(selsync, "connected");
+    selsync->socket = sock;
+    selsync_register_socket(selsync);
+  }
 }
 
 void selsync_accept_connections(struct selsync *selsync)
@@ -278,12 +283,12 @@ void selsync_selection_value_received(Widget widget, XtPointer client_data, Atom
 
 void selsync_reconnect(struct selsync *selsync)
 {
-  selsync_connect_client(selsync);
+  if (selsync->client)
+    selsync_connect_client(selsync);
 }
 
 void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *xid)
 {
-  char buffer[32];
   int size = 32;
   XSelectionEvent *ev;
   Display* d;
@@ -320,6 +325,7 @@ void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *x
     }
   } else {
     selsync_debug(selsync, "disconnected");
+    selsync->socket = 0;
     XtRemoveInput(selsync->input_id);
     selsync_reconnect(selsync);
   }
@@ -388,6 +394,8 @@ void selsync_handle_selection_event(
 {
   XSelectionEvent *ev;
   struct selsync *selsync = selsync_from_widget(widget);
+  Atom target;
+  Display *display;
 
   switch (event->type) {
   case SelectionClear:
@@ -395,9 +403,12 @@ void selsync_handle_selection_event(
     break;
     
   case SelectionRequest:
-    write(selsync->socket, "\6\0", 2);
-    if (event->xselectionrequest.target == XA_STRING) {
-      ev = XtMalloc((Cardinal) sizeof(XSelectionEvent));
+    target = event->xselectionrequest.target;
+    display = event->xselectionrequest.display;
+    
+    if (target == XA_STRING) {
+      write(selsync->socket, "\6\0", 2);
+      ev = (XSelectionEvent*)XtMalloc((Cardinal) sizeof(XSelectionEvent));
       ev->type = SelectionNotify;
       ev->display = event->xselectionrequest.display;
       ev->requestor = event->xselectionrequest.requestor;
@@ -407,8 +418,31 @@ void selsync_handle_selection_event(
       ev->property = event->xselectionrequest.property;
       
       selsync->selection_event = ev;
-    } else
-      selsync_error(selsync, "invalid target in request");
+    } else if (target == XA_TARGETS(display)) {
+      int size = 1;
+      Atom **targets = (Atom**)XtMalloc(sizeof(Atom) * size);
+      *targets = XA_STRING;
+      
+      ev = (XSelectionEvent*)XtMalloc((Cardinal) sizeof(XSelectionEvent));
+      ev->type = SelectionNotify;
+      ev->display = event->xselectionrequest.display;
+      ev->requestor = event->xselectionrequest.requestor;
+      ev->selection = event->xselectionrequest.selection;
+      ev->time = event->xselectionrequest.time;
+      ev->target = event->xselectionrequest.target;
+      ev->property = event->xselectionrequest.property;
+      
+      XChangeProperty(display, ev->requestor, ev->property,
+        XA_ATOM, 32, PropModeReplace,
+        (unsigned char *)targets, (int)size);
+      
+      XSendEvent(display, ev->requestor, False, (unsigned long)NULL, (XEvent *)ev);
+      
+      XtFree((XPointer)ev);
+    } else {
+      selsync_error(selsync, "invalid target in request:");
+      selsync_error(selsync, XGetAtomName(display, target));
+    }
     
     break;
   }

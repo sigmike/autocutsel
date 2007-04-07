@@ -193,6 +193,7 @@ class TestSelSync < Test::Unit::TestCase
       @socket.close
       @server.close
       @selsync.process_next_events
+      assert_equal 0, @selsync[:socket]
       sleep 0.015
       @server = TCPServer.new @port
       @selsync.process_next_events
@@ -204,12 +205,48 @@ class TestSelSync < Test::Unit::TestCase
   
   def test_default_reconnect_delay
     @selsync = SelSync.new
-    assert_equal 500, @selsync[:reconnect_delay]
+    assert_equal 1000, @selsync[:reconnect_delay]
   end
 
   def test_server_lost_connection
+    create_server
+    connect_socket
+    @selsync.process_next_events
+    old_socket = @selsync[:socket]
+    @socket.close
+    @selsync.process_next_events
+    assert_equal 0, @selsync[:socket]
+    connect_socket
+    @selsync.process_next_events
+    assert_not_equal old_socket, @selsync[:socket]
   end
   
   def test_another_client_connects_to_server
+    create_server
+    connect_socket
+    @selsync.process_next_events
+    old_socket = @selsync[:socket]
+    socket = TCPSocket.new "localhost", @port
+    @selsync.process_next_events
+    assert_equal old_socket, @selsync[:socket]
+    assert_no_timeout "socket not closed by peer" do
+      assert_nil socket.read(1)
+    end
+  end
+  
+  def test_request_targets
+    create_client_owning_selection
+    pid = fork do
+      exec "./cutsel -s PRIMARY targets >test_result"
+    end
+    sleep 0.2
+    @selsync.process_next_events
+    assert_raises Errno::EAGAIN, "message received on socket" do
+      @socket.read_nonblock(128)
+    end
+    timeout 10 do
+      Process.waitpid pid
+    end
+    assert_match /^STRING$/, File.read("test_result")
   end
 end
