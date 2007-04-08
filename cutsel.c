@@ -50,6 +50,9 @@ int Syntax(char *call)
   fprintf (stderr,
     "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] length\n",
     call);
+  fprintf (stderr,
+    "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] utf8\n",
+    call);
   exit (1);
 }
 
@@ -132,6 +135,23 @@ static void LengthReceived(Widget w, XtPointer client_data, Atom *selection,
   exit(0);
 }
 
+static void Utf8Received(Widget w, XtPointer client_data, Atom *selection,
+                           Atom *type, XtPointer value,
+                           unsigned long *received_length, int *format)
+{
+  Display* d = XtDisplay(w);
+  
+  if (*type == 0)
+    printf("No UTF8_STRING received\n");
+  else if (*type == XInternAtom(d, "UTF8_STRING", False)) {
+      printf("%s\n", (char*)value);
+  } else
+      printf("Invalid type received: %s\n", XGetAtomName(d, *type));
+
+  XtFree(value);
+  exit(0);
+}
+
 void OwnSelection(XtPointer p, XtIntervalId* i)
 {
   if (XtOwnSelection(box, options.selection,
@@ -163,6 +183,14 @@ void GetLength(XtPointer p, XtIntervalId* i)
   Display* d = XtDisplay(box);
     XtGetSelectionValue(box, selection, XA_LENGTH(d),
       LengthReceived, NULL,
+      CurrentTime);
+}
+
+void GetUtf8(XtPointer p, XtIntervalId* i)
+{
+  Display* d = XtDisplay(box);
+    XtGetSelectionValue(box, selection, XInternAtom(d, "UTF8_STRING", False),
+      Utf8Received, NULL,
       CurrentTime);
 }
 
@@ -235,6 +263,8 @@ int main(int argc, char* argv[])
     XtAppAddTimeOut(context, 10, GetTargets, 0);
   } else if (strcmp(argv[1], "length") == 0) {
     XtAppAddTimeOut(context, 10, GetLength, 0);
+  } else if (strcmp(argv[1], "utf8") == 0) {
+    XtAppAddTimeOut(context, 10, GetUtf8, 0);
   } else {
     Syntax(argv[0]);
   }
