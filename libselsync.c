@@ -389,11 +389,14 @@ void selsync_selection_lost(struct selsync *selsync)
 {
   char lost;
   
-  selsync_debug(selsync, "selsync_selection_lost");
-  lost = 6;
-  send(selsync->socket, &lost, sizeof(lost), 0);
-  lost = 2;
-  send(selsync->socket, &lost, sizeof(lost), 0);
+  if (selsync->owning_selection) {
+    selsync_debug(selsync, "selsync_selection_lost");
+    lost = 6;
+    send(selsync->socket, &lost, sizeof(lost), 0);
+    lost = 2;
+    send(selsync->socket, &lost, sizeof(lost), 0);
+    selsync->owning_selection = 0;
+  }
 }
 
 void selsync_handle_selection_event(
@@ -488,6 +491,7 @@ int selsync_own_selection(struct selsync *selsync)
     selsync_error(selsync, "unable to own selection");
     return 0;
   }
+  selsync->owning_selection = 1;
   XtAddEventHandler(selsync->widget, (EventMask)0, TRUE,
     selsync_handle_selection_event, (XtPointer)selsync);
   return 1;
@@ -498,7 +502,8 @@ void selsync_disown_selection(struct selsync *selsync)
   Display* d = XtDisplay(selsync->widget);
   selsync_debug(selsync, "selsync_disown_selection");
   
-  XSetSelectionOwner(d, selsync->selection, None, XtLastTimestampProcessed(d));
+  XSetSelectionOwner(d, selsync->selection, None, CurrentTime);
+  selsync_selection_lost(selsync);
 }
 
 int selsync_owning_selection(struct selsync *selsync)

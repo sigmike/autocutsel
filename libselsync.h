@@ -50,6 +50,7 @@ struct selsync {
   XSelectionEvent *selection_event;
   XtInputId input_id;
   int reconnect_delay;
+  int owning_selection;
 };
 
 struct selsync *selsync_init();

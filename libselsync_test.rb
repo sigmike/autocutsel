@@ -256,10 +256,12 @@ class TestSelSync < Test::Unit::TestCase
     end
     sleep 0.2
     @selsync.process_next_events
-    assert_raises Errno::EAGAIN, "message received on socket" do
-      @socket.read_nonblock(128)
+    assert_raises Timeout::Error, "message received on socket" do
+      timeout 0.1 do
+        @socket.read(1)
+      end
     end
-    timeout 0.1 do
+    assert_no_timeout 1 do
       Process.waitpid pid
     end
     assert_match /^STRING$/, File.read("test_result")
