@@ -48,7 +48,7 @@ int Syntax(char *call)
   fprintf (stderr,
     "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] length\n", call);
   fprintf (stderr,
-    "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] utf8\n", call);
+    "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] utf8 [<value>]\n", call);
   fprintf (stderr,
     "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] request_selection <target>\n", call);
   exit (1);
@@ -185,6 +185,82 @@ void OwnSelection(XtPointer p, XtIntervalId* i)
     printf("WARNING: Unable to own selection!\n");
 }
 
+Boolean ConvertSelectionToUtf8Only(Widget w, Atom *selection, Atom *target,
+                                   Atom *type, XtPointer *value,
+                                   unsigned long *length, int *format)
+{
+  Display* d = XtDisplay(w);
+  XSelectionRequestEvent* req =
+    XtGetSelectionRequest(w, *selection, (XtRequestId)NULL);
+  
+  if (options.debug) {
+    printf("Window 0x%lx requested %s of selection %s.\n",
+      req->requestor,
+      XGetAtomName(d, *target),
+      XGetAtomName(d, *selection));
+  }
+  
+  if (*target == XA_TARGETS(d)) {
+    Atom *targetP, *atoms;
+    XPointer std_targets;
+    unsigned long std_length;
+    int i;
+    
+    *value = XtMalloc(sizeof(Atom)*2);
+    targetP = *(Atom**)value;
+    atoms = targetP;
+    *length = 2;
+    *targetP++ = XInternAtom(d, "UTF8_STRING", True);
+    *targetP++ = XA_TARGETS(d);
+    memmove( (char*)targetP, (char*)std_targets, sizeof(Atom)*std_length);
+    XtFree((char*)std_targets);
+    *type = XA_ATOM;
+    *format = 32;
+    
+    if (options.debug) {
+      printf("Targets are: ");
+      for (i=0; i<*length; i++)
+        printf("%s ", XGetAtomName(d, atoms[i]));
+      printf("\n");
+    }
+
+    return True;
+  }
+  
+  if (*target == XInternAtom(d, "UTF8_STRING", True)) {
+    *type = XA_STRING;
+    *value = XtMalloc((Cardinal) options.length);
+    memmove((char *)*value, options.value, options.length);
+    *length = options.length;
+    *format = 8;
+
+    if (options.debug) {
+      printf("Returning ");
+      PrintValue((char*)*value, *length);
+      printf("\n");
+    }
+   
+    return True;
+  }
+  
+  /* else */
+  if (options.debug)
+    printf("Target not allowed\n");
+
+  return False;
+}
+
+void OwnSelectionAsUtf8(XtPointer p, XtIntervalId* i)
+{
+  if (XtOwnSelection(box, options.selection,
+                     0, //XtLastTimestampProcessed(dpy),
+                     ConvertSelectionToUtf8Only, LoseSelection, NULL) == True) {
+    if (options.debug)
+      printf("Selection owned\n");
+  } else
+    printf("WARNING: Unable to own selection!\n");
+}
+
 void GetSelection(XtPointer p, XtIntervalId* i)
 {
   XtGetSelectionValue(box, selection, XA_STRING,
@@ -296,7 +372,13 @@ int main(int argc, char* argv[])
   } else if (strcmp(argv[1], "length") == 0) {
     XtAppAddTimeOut(context, 10, GetLength, 0);
   } else if (strcmp(argv[1], "utf8") == 0) {
-    XtAppAddTimeOut(context, 10, GetUtf8, 0);
+    if (argc > 2) {
+      options.value = argv[2];
+      options.length = strlen(argv[2]);
+      XtAppAddTimeOut(context, 10, OwnSelectionAsUtf8, 0);
+    } else {
+      XtAppAddTimeOut(context, 10, GetUtf8, 0);
+    }
   } else if (strcmp(argv[1], "request_selection") == 0) {
     XtAppAddTimeOut(context, 10, RequestSelection, argv[2]);
   } else {
