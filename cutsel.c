@@ -42,17 +42,15 @@ static XrmOptionDescRec optionDesc[] = {
 int Syntax(char *call)
 {
   fprintf (stderr,
-    "usage:  %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] cut|sel [<value>]\n",
-    call);
+    "usage:  %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] cut|sel [<value>]\n", call);
   fprintf (stderr,
-    "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] targets\n",
-    call);
+    "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] targets\n", call);
   fprintf (stderr,
-    "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] length\n",
-    call);
+    "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] length\n", call);
   fprintf (stderr,
-    "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] utf8\n",
-    call);
+    "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] utf8\n", call);
+  fprintf (stderr,
+    "        %s [-selection <name>] [-cutbuffer <number>] [-debug] [-verbose] request_selection <target>\n", call);
   exit (1);
 }
 
@@ -136,8 +134,8 @@ static void LengthReceived(Widget w, XtPointer client_data, Atom *selection,
 }
 
 static void Utf8Received(Widget w, XtPointer client_data, Atom *selection,
-                           Atom *type, XtPointer value,
-                           unsigned long *received_length, int *format)
+                         Atom *type, XtPointer value,
+                         unsigned long *received_length, int *format)
 {
   Display* d = XtDisplay(w);
   
@@ -148,6 +146,30 @@ static void Utf8Received(Widget w, XtPointer client_data, Atom *selection,
   } else
       printf("Invalid type received: %s\n", XGetAtomName(d, *type));
 
+  XtFree(value);
+  exit(0);
+}
+
+static void SelectionReceived(Widget w, XtPointer client_data, Atom *selection,
+                              Atom *type, XtPointer value,
+                              unsigned long *length, int *format)
+{
+  Display* d = XtDisplay(w);
+  int i;
+  
+  if (*type == 0)
+    printf("Type: None\n");
+  else {
+    printf("Type: %s\n", XGetAtomName(d, *type));
+    if (*type == XA_ATOM) {
+      Atom *atoms = (Atom*)value;
+      for (i=0; i<*length; i++)
+        printf("%s\n", XGetAtomName(d, atoms[i]));
+    } else {
+      fwrite((char*)value, *length, 1, stdout);
+    }
+  }
+  
   XtFree(value);
   exit(0);
 }
@@ -173,25 +195,35 @@ void GetSelection(XtPointer p, XtIntervalId* i)
 void GetTargets(XtPointer p, XtIntervalId* i)
 {
   Display* d = XtDisplay(box);
-    XtGetSelectionValue(box, selection, XA_TARGETS(d),
-      TargetsReceived, NULL,
-      CurrentTime);
+  XtGetSelectionValue(box, selection, XA_TARGETS(d),
+    TargetsReceived, NULL,
+    CurrentTime);
 }
 
 void GetLength(XtPointer p, XtIntervalId* i)
 {
   Display* d = XtDisplay(box);
-    XtGetSelectionValue(box, selection, XA_LENGTH(d),
-      LengthReceived, NULL,
-      CurrentTime);
+  XtGetSelectionValue(box, selection, XA_LENGTH(d),
+    LengthReceived, NULL,
+    CurrentTime);
 }
 
 void GetUtf8(XtPointer p, XtIntervalId* i)
 {
   Display* d = XtDisplay(box);
-    XtGetSelectionValue(box, selection, XInternAtom(d, "UTF8_STRING", False),
-      Utf8Received, NULL,
-      CurrentTime);
+  XtGetSelectionValue(box, selection, XInternAtom(d, "UTF8_STRING", False),
+    Utf8Received, NULL,
+    CurrentTime);
+}
+
+void RequestSelection(XtPointer p, XtIntervalId* i)
+{
+  char *target = (char*)p;
+  Display* d = XtDisplay(box);
+  
+  XtGetSelectionValue(box, selection, XInternAtom(d, target, False),
+    SelectionReceived, NULL,
+    CurrentTime);
 }
 
 void Exit(XtPointer p, XtIntervalId* i)
@@ -265,6 +297,8 @@ int main(int argc, char* argv[])
     XtAppAddTimeOut(context, 10, GetLength, 0);
   } else if (strcmp(argv[1], "utf8") == 0) {
     XtAppAddTimeOut(context, 10, GetUtf8, 0);
+  } else if (strcmp(argv[1], "request_selection") == 0) {
+    XtAppAddTimeOut(context, 10, RequestSelection, argv[2]);
   } else {
     Syntax(argv[0]);
   }
