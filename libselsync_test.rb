@@ -91,10 +91,8 @@ class TestSelSync < Test::Unit::TestCase
       @selsync = SelSync.new
       @selsync.parse_arguments(3, ["./selsync", hostname, "4567"])
       @selsync.start
-      assert_nothing_raised "connecting to #{hostname}" do
-        timeout 1 do
-          assert server.accept
-        end
+      assert_no_timeout "connecting to #{hostname}" do
+        assert server.accept
       end
       server.close
       assert_not_equal 0, @selsync[:socket]
@@ -146,25 +144,18 @@ class TestSelSync < Test::Unit::TestCase
   
   def test_selection_requested_by_an_application
     create_client_owning_selection
-    pid = fork do
-      exec "./cutsel -s PRIMARY sel >test_result"
-    end
-    sleep 0.2
+    request_selection "STRING"
     @selsync.process_next_events
     assert_received request_message
     @socket.write result_message("foo bar")
     @selsync.process_next_events
-    timeout 10 do
-      Process.waitpid pid
-    end
-    assert_equal "foo bar\n", File.read("test_result")
+    wait_for_selection_result
+    assert_equal "STRING", @result_type
+    assert_equal "foo bar", @result
   end
   
   def test_selection_requested_by_peer
-    pid = fork do
-      exec "./cutsel -s PRIMARY sel bob"
-    end
-    sleep 0.1
+    own_selection_as_string "bob"
     
     create_client_not_owning_selection
     @socket.write request_message
@@ -251,22 +242,17 @@ class TestSelSync < Test::Unit::TestCase
   
   def test_request_targets
     create_client_owning_selection
-    pid = fork do
-      exec "./cutsel -s PRIMARY targets >test_result"
-    end
-    sleep 0.2
+    request_selection "TARGETS"
     @selsync.process_next_events
-    assert_raises Timeout::Error, "message received on socket" do
-      timeout 0.1 do
-        @socket.read(1)
-      end
-    end
-    assert_no_timeout 1 do
-      Process.waitpid pid
-    end
-    assert_match /^STRING$/, File.read("test_result")
+    wait_for_selection_result
+    assert_nothing_received
+    assert_equal "ATOM", @result_type
+    assert atoms(@result).include?("STRING"), "#{atoms(@result).inspect} doesn't include STRING"
   end
   
   def test_request_utf8_string
+  end
+  
+  def test_request_selection_with_property_parameters
   end
 end

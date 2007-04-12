@@ -133,6 +133,14 @@ module SelSyncTestHelper
     end
   end
   
+  def assert_nothing_received
+    assert_raises Timeout::Error, "message received on socket" do
+      timeout 0.1 do
+        @socket.read(1)
+      end
+    end
+  end
+  
   def create_client_with_socket
     @port = 4567
     server = TCPServer.new @port
@@ -163,4 +171,29 @@ module SelSyncTestHelper
     @socket = @server.accept
   end
   
+  def request_selection target
+    @pid = fork do
+      exec "./cutsel -s PRIMARY request_selection #{target} >test_result"
+    end
+    sleep 0.2
+  end
+  
+  def wait_for_selection_result
+    assert_no_timeout 1 do
+      Process.waitpid @pid
+    end
+    @result_type, @result = File.read("test_result").split("\n", 2)
+    @result_type = @result_type.scan(/Type: (.+)/).first.first
+  end
+  
+  def atoms data
+    data.split("\n")
+  end
+  
+  def own_selection_as_string string
+    pid = fork do
+      exec "./cutsel -s PRIMARY sel #{string}"
+    end
+    sleep 0.1
+  end
 end
