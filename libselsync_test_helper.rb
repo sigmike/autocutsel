@@ -192,7 +192,7 @@ module SelSyncTestHelper
   
   def own_selection_as_string string
     pid = fork do
-      exec "./cutsel -s PRIMARY sel #{string}"
+      exec "./cutsel -s PRIMARY utf8 #{string}"
     end
     sleep 0.1
   end

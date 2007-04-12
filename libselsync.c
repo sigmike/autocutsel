@@ -67,6 +67,7 @@ void selsync_init_selection(struct selsync *selsync)
 {
   Display* d = XtDisplay(selsync->widget);
   selsync->selection = XInternAtom(d, "PRIMARY", 0);
+  selsync->utf8_string = XInternAtom(d, "UTF8_STRING", 0);
 }
 
 void selsync_error(struct selsync* selsync, char *message)
@@ -302,6 +303,8 @@ void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *x
   char message;
   char selsync_message;
   
+  d = XtDisplay(selsync->widget);
+
   selsync_debug(selsync, "socket event");
   size = read(selsync->socket, &message, 1);
   if (size == 1) {
@@ -309,12 +312,11 @@ void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *x
     switch (selsync_message) {
       case 0:
         selsync_debug(selsync, "request packet received");
-        XtGetSelectionValue(selsync->widget, selsync->selection, XA_STRING,
+        XtGetSelectionValue(selsync->widget, selsync->selection, selsync->utf8_string,
           selsync_selection_value_received, NULL, CurrentTime);
         break;
       case 1:
         selsync_debug(selsync, "result packet received");
-        d = XtDisplay(selsync->widget);
         ev = selsync->selection_event;
         read(selsync->socket, &size, 4);
         value = malloc(size);
@@ -419,7 +421,7 @@ void selsync_handle_selection_event(
     target = event->xselectionrequest.target;
     display = event->xselectionrequest.display;
     
-    if (target == XA_STRING) {
+    if (target == XA_STRING || target == selsync->utf8_string) {
       selsync_debug(selsync, "selection requested as string");
       write(selsync->socket, "\6\0", 2);
       ev = (XSelectionEvent*)XtMalloc((Cardinal) sizeof(XSelectionEvent));
@@ -433,9 +435,11 @@ void selsync_handle_selection_event(
       
       selsync->selection_event = ev;
     } else if (target == XA_TARGETS(display)) {
-      int size = 1;
+      int size = 2;
       Atom *targets = (Atom*)XtMalloc(sizeof(Atom) * size);
-      *targets = XA_STRING;
+      Atom *p = targets;
+      *p++ = selsync->utf8_string;
+      *p++ = XA_STRING;
       
       selsync_debug(selsync, "target list requested");
       

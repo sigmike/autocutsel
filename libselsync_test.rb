@@ -250,7 +250,16 @@ class TestSelSync < Test::Unit::TestCase
     assert atoms(@result).include?("STRING"), "#{atoms(@result).inspect} doesn't include STRING"
   end
   
-  def test_request_utf8_string
+  def test_utf8_string_requested
+    create_client_owning_selection
+    request_selection "UTF8_STRING"
+    @selsync.process_next_events
+    assert_received request_message
+    @socket.write result_message("foo bar")
+    @selsync.process_next_events
+    wait_for_selection_result
+    assert_equal "STRING", @result_type
+    assert_equal "foo bar", @result
   end
   
   def test_request_selection_with_property_parameters

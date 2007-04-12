@@ -51,6 +51,7 @@ struct selsync {
   XtInputId input_id;
   int reconnect_delay;
   int owning_selection;
+  Atom utf8_string;
 };
 
 struct selsync *selsync_init();
