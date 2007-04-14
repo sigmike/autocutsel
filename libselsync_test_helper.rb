@@ -190,7 +190,7 @@ module SelSyncTestHelper
     data.split("\n")
   end
   
-  def own_selection_as_string string
+  def own_selection string
     pid = fork do
       exec "./cutsel -s PRIMARY utf8 #{string}"
     end

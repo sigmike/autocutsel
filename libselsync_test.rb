@@ -142,20 +142,40 @@ class TestSelSync < Test::Unit::TestCase
     assert_equal 1, @selsync.owning_selection
   end
   
-  def test_selection_requested_by_an_application
+  def test_request_targets
     create_client_owning_selection
-    request_selection "STRING"
+    request_selection "TARGETS"
+    @selsync.process_next_events
+    wait_for_selection_result
+    assert_nothing_received
+    assert_equal "ATOM", @result_type
+    assert_equal ["TARGETS", "UTF8_STRING"], atoms(@result)
+  end
+  
+  def test_utf8_string_requested
+    create_client_owning_selection
+    request_selection "UTF8_STRING"
     @selsync.process_next_events
     assert_received request_message
     @socket.write result_message("foo bar")
     @selsync.process_next_events
     wait_for_selection_result
-    assert_equal "STRING", @result_type
+    assert_equal "UTF8_STRING", @result_type
     assert_equal "foo bar", @result
   end
   
+  def test_string_request_refused
+    create_client_owning_selection
+    request_selection "STRING"
+    @selsync.process_next_events
+    assert_nothing_received
+    wait_for_selection_result
+    assert_equal "None", @result_type
+    assert_equal "", @result
+  end
+  
   def test_selection_requested_by_peer
-    own_selection_as_string "bob"
+    own_selection "bob"
     
     create_client_not_owning_selection
     @socket.write request_message
@@ -238,28 +258,6 @@ class TestSelSync < Test::Unit::TestCase
     assert_no_timeout "socket not closed by peer" do
       assert_nil socket.read(1)
     end
-  end
-  
-  def test_request_targets
-    create_client_owning_selection
-    request_selection "TARGETS"
-    @selsync.process_next_events
-    wait_for_selection_result
-    assert_nothing_received
-    assert_equal "ATOM", @result_type
-    assert atoms(@result).include?("STRING"), "#{atoms(@result).inspect} doesn't include STRING"
-  end
-  
-  def test_utf8_string_requested
-    create_client_owning_selection
-    request_selection "UTF8_STRING"
-    @selsync.process_next_events
-    assert_received request_message
-    @socket.write result_message("foo bar")
-    @selsync.process_next_events
-    wait_for_selection_result
-    assert_equal "STRING", @result_type
-    assert_equal "foo bar", @result
   end
   
   def test_request_selection_with_property_parameters

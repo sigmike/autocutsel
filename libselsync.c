@@ -270,8 +270,8 @@ void selsync_selection_value_received(Widget widget, XtPointer client_data, Atom
     content = "[nobody owns the selection]";
     len = strlen(content);
     selsync_debug(selsync, "nobody owns the selection");
-  } else if (*type == XA_STRING || *type == selsync->utf8_string) {
-    selsync_debug(selsync, "selection value received as string");
+  } else if (*type == selsync->utf8_string) {
+    selsync_debug(selsync, "selection value received as UTF8_STRING");
     content = (char*)value;
     len = *received_length;
   } else {
@@ -322,7 +322,7 @@ void selsync_process_socket_event(struct selsync *selsync, int *fd, XtInputId *x
         value = malloc(size);
         read(selsync->socket, value, size);
         XChangeProperty(d, ev->requestor, ev->property,
-          XA_STRING, 8, PropModeReplace,
+          selsync->utf8_string, 8, PropModeReplace,
           (unsigned char *)value, (int)size);
         
         XSendEvent(d, ev->requestor, False, (unsigned long)NULL, (XEvent *)ev);
@@ -421,8 +421,8 @@ void selsync_handle_selection_event(
     target = event->xselectionrequest.target;
     display = event->xselectionrequest.display;
     
-    if (target == XA_STRING || target == selsync->utf8_string) {
-      selsync_debug(selsync, "selection requested as string");
+    if (target == selsync->utf8_string) {
+      selsync_debug(selsync, "selection requested as UTF8_STRING");
       write(selsync->socket, "\6\0", 2);
       ev = (XSelectionEvent*)XtMalloc((Cardinal) sizeof(XSelectionEvent));
       ev->type = SelectionNotify;
@@ -438,8 +438,8 @@ void selsync_handle_selection_event(
       int size = 2;
       Atom *targets = (Atom*)XtMalloc(sizeof(Atom) * size);
       Atom *p = targets;
+      *p++ = XA_TARGETS(display);
       *p++ = selsync->utf8_string;
-      *p++ = XA_STRING;
       
       selsync_debug(selsync, "target list requested");
       
