@@ -228,7 +228,7 @@ Boolean ConvertSelectionToUtf8Only(Widget w, Atom *selection, Atom *target,
   }
   
   if (*target == XInternAtom(d, "UTF8_STRING", True)) {
-    *type = XA_STRING;
+    *type = XInternAtom(d, "UTF8_STRING", True);
     *value = XtMalloc((Cardinal) options.length);
     memmove((char *)*value, options.value, options.length);
     *length = options.length;

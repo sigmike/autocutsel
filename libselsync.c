@@ -270,7 +270,7 @@ void selsync_selection_value_received(Widget widget, XtPointer client_data, Atom
     content = "[nobody owns the selection]";
     len = strlen(content);
     selsync_debug(selsync, "nobody owns the selection");
-  } else if (*type == XA_STRING) {
+  } else if (*type == XA_STRING || *type == selsync->utf8_string) {
     selsync_debug(selsync, "selection value received as string");
     content = (char*)value;
     len = *received_length;
