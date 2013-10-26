@@ -213,7 +213,8 @@ int main(int argc, char* argv[])
       XtAppAddTimeOut(context, 10, Exit, 0);
     } else {
       options.value = XFetchBuffer(dpy, &options.length, buffer);
-      printf("%s\n", options.value);
+      if (options.length)
+        printf("%s\n", options.value);
       exit(0);
     }
   } else if (strcmp(argv[1], "sel") == 0) {
