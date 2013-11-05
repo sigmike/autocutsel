@@ -1,5 +1,6 @@
 autocutsel
-http://lepton.fr/tools/autocutsel/ or http://www.nongnu.org/autocutsel/
+http://www.nongnu.org/autocutsel/
+https://github.com/sigmike/autocutsel
 Copyright (c) 2001-2006 - Michael Witrant
 
 X servers use two schemes to copy text between applications. The first one
