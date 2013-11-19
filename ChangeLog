@@ -1,3 +1,7 @@
+v0.9.1: 2013-11-19
+  - fixed cutsel segfault for empty cut buffer (Jurij Smakov)
+  - built package with libtool 2.4.2.418 to support ppc64le
+
 v0.9.0: 2006-11-05
   - really works on 64 bits linux
   - added test suite
