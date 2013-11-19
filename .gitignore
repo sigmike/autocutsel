@@ -19,3 +19,5 @@ autocutsel
 cutsel
 *.o
 *.tar.gz
+install-sh
+missing
