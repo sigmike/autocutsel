@@ -131,16 +131,16 @@ class AutoCutSelTest < Test::Unit::TestCase
   end
   
   def test_default_selection
-    run_autocutsel_and_make_it_own_selection @method_name do
-      assert_equal @method_name, get_selection("CLIPBOARD")
+    run_autocutsel_and_make_it_own_selection __method__.to_s do
+      assert_equal __method__.to_s, get_selection("CLIPBOARD")
       assert_nil get_selection("my_selection")
     end
   end
   
   def test_primary_selection
     clipboard_value = get_selection("CLIPBOARD")
-    run_autocutsel_and_make_it_own_selection @method_name, "PRIMARY" do
-      assert_equal @method_name, get_selection("PRIMARY")
+    run_autocutsel_and_make_it_own_selection __method__.to_s, "PRIMARY" do
+      assert_equal __method__.to_s, get_selection("PRIMARY")
       assert_equal clipboard_value, get_selection("CLIPBOARD")
     end
   end
