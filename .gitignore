@@ -18,3 +18,4 @@ stamp-h1
 autocutsel
 cutsel
 *.o
+*.tar.gz
