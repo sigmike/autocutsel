@@ -8,3 +8,10 @@ config.sub
 configure
 depcomp
 ltmain.sh
+.deps/
+Makefile
+config.h
+config.log
+config.status
+libtool
+stamp-h1
