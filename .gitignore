@@ -21,3 +21,4 @@ cutsel
 *.tar.gz
 install-sh
 missing
+m4/
