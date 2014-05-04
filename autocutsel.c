@@ -200,7 +200,7 @@ static void CheckBuffer()
     }
     
     ChangeValue(value, length);
-    XtGetSelectionValue(box, selection, XA_STRING,
+    XtGetSelectionValue(box, selection, XInternAtom(dpy, "UTF8_STRING", False),
       OwnSelectionIfDiffers, NULL,
       CurrentTime);
   }
@@ -265,7 +265,7 @@ void timeout(XtPointer p, XtIntervalId* i)
         get_value = 0;
     }
     if (get_value)
-      XtGetSelectionValue(box, selection, XA_STRING,    
+      XtGetSelectionValue(box, selection, XInternAtom(dpy, "UTF8_STRING", False),
         SelectionReceived, NULL,
         CurrentTime);
   }

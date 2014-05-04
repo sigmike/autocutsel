@@ -74,6 +74,7 @@ Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
   Display* d = XtDisplay(w);
   XSelectionRequestEvent* req =
     XtGetSelectionRequest(w, *selection, (XtRequestId)NULL);
+  Atom utf8_string = XInternAtom(d, "UTF8_STRING", False);
   
   if (options.debug) {
     printf("Window 0x%lx requested %s of selection %s.\n",
@@ -93,7 +94,8 @@ Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
     *value = XtMalloc(sizeof(Atom)*(std_length + 4));
     targetP = *(Atom**)value;
     atoms = targetP;
-    *length = std_length + 4;
+    *length = std_length + 5;
+    *targetP++ = utf8_string;
     *targetP++ = XA_STRING;
     *targetP++ = XA_TEXT(d);
     *targetP++ = XA_LENGTH(d);
@@ -113,15 +115,15 @@ Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
     return True;
   }
   
-  if (*target == XA_STRING || *target == XA_TEXT(d)) {
-    *type = XA_STRING;
+  if (*target == utf8_string || *target == XA_STRING || *target == XA_TEXT(d)) {
+    *type = *target;
     *value = XtMalloc((Cardinal) options.length);
     memmove((char *)*value, options.value, options.length);
     *length = options.length;
     *format = 8;
 
     if (options.debug) {
-      printf("Returning ");
+      printf("Returning %s ", XGetAtomName(d, *target));
       PrintValue((char*)*value, *length);
       printf("\n");
     }
