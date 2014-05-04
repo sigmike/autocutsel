@@ -1,3 +1,8 @@
+v0.10.0: 2014-05-04
+  - set WM_NAME, _NET_WM_NAME, and _NET_WM_PID (Michael Stapelberg)
+  - support for UTF-8 strings
+  - minor fixes
+
 v0.9.1: 2013-11-19
   - fixed cutsel segfault for empty cut buffer (Jurij Smakov)
   - built package with libtool 2.4.2.418 to support ppc64le
