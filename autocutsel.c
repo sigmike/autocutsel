@@ -355,6 +355,35 @@ int main(int argc, char* argv[])
   XtAppAddTimeOut(context, options.pause, timeout, 0);
   XtRealizeWidget(top);
   XUnmapWindow(XtDisplay(top), XtWindow(top));
+
+  /* Set up window properties so that the PID of the relevant autocutsel
+   * process is known and autocutsel windows can be identified as such when
+   * debugging. */
+  const int _NET_WM_NAME = 0;
+  const int UTF8_STRING = 1;
+  const int WM_NAME = 2;
+  const int STRING = 3;
+  const int _NET_WM_PID = 4;
+  const int CARDINAL = 5;
+
+  Atom atoms[6];
+  char *names[6] = {
+      "_NET_WM_NAME",
+      "UTF8_STRING",
+      "WM_NAME",
+      "STRING",
+      "_NET_WM_PID",
+      "CARDINAL",
+  };
+  XInternAtoms(dpy, names, 6, 0, atoms);
+
+  const char *window_name = "autocutsel";
+  pid_t pid = getpid();
+
+  XChangeProperty(dpy, XtWindow(top), atoms[_NET_WM_NAME], atoms[UTF8_STRING], 8, PropModeReplace, (const unsigned char*)window_name, strlen(window_name));
+  XChangeProperty(dpy, XtWindow(top), atoms[WM_NAME], atoms[STRING], 8, PropModeReplace, (const unsigned char*)window_name, strlen(window_name));
+  XChangeProperty(dpy, XtWindow(top), atoms[_NET_WM_PID], atoms[CARDINAL], 32, PropModeReplace, (const unsigned char*)&pid, 1);
+
   XtAppMainLoop(context);
   
   return 0;
