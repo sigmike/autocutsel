@@ -300,7 +300,7 @@ int main(int argc, char* argv[])
     options.verbose = 0;
   
   if (options.debug || options.verbose)
-    printf("autcutsel v%s\n", VERSION);
+    printf("autocutsel v%s\n", VERSION);
    
   if (strcmp(options.buttonup_option, "on") == 0)
     options.buttonup = 1;
