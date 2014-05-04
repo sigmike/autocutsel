@@ -42,6 +42,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
+#include <inttypes.h>
 
 
 typedef struct {

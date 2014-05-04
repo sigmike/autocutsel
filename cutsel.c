@@ -118,7 +118,7 @@ static void LengthReceived(Widget w, XtPointer client_data, Atom *selection,
   if (*type == 0)
     printf("No length received\n");
   else if (*type == XA_INTEGER) {
-      printf("Length is %lu\n", *(CARD32*)value);
+      printf("Length is %" PRIx32 "\n", *(CARD32*)value);
   } else
       printf("Invalid type received: %s\n", XGetAtomName(d, *type));
 
