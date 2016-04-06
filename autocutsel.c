@@ -49,13 +49,14 @@ static XrmOptionDescRec optionDesc[] = {
   {"-pause",     "pause",     XrmoptionSepArg, NULL},
   {"-p",         "pause",     XrmoptionSepArg, NULL},
   {"-buttonup",  "buttonup",  XrmoptionNoArg,  "on"},
+  {"-cbh8",      "cbh8",      XrmoptionNoArg,  "on"},
 };
 
 int Syntax(char *call)
 {
   fprintf (stderr,
     "usage:  %s [-selection <name>] [-cutbuffer <number>]"
-    " [-pause <milliseconds>] [-debug] [-verbose] [-fork] [-buttonup]\n", 
+    " [-pause <milliseconds>] [-debug] [-verbose] [-fork] [-buttonup] [-cbh8]\n", 
     call);
   exit (1);
 }
@@ -79,6 +80,8 @@ static XtResource resources[] = {
     Offset(pause), XtRImmediate, (XtPointer)500},
   {"buttonup", "ButtonUp", XtRString, sizeof(String),
     Offset(buttonup_option), XtRString, "off"},
+  {"cbh8", "CBH8", XtRString, sizeof(String),
+    Offset(cbh8_option), XtRString, "off"},
 };
 
 #undef Offset
@@ -157,6 +160,11 @@ static void OwnSelectionIfDiffers(Widget w, XtPointer client_data,
 {
   int length = *received_length;
   
+  if ( options.own_selection == 1 ) { // already own it
+    XFree(value);
+    return;
+  }
+
   if (*type == 0 || 
       *type == XT_CONVERT_FAIL || 
       length == 0 || 
@@ -200,9 +208,28 @@ static void CheckBuffer()
     }
     
     ChangeValue(value, length);
-    XtGetSelectionValue(box, selection, XInternAtom(dpy, "UTF8_STRING", False),
-      OwnSelectionIfDiffers, NULL,
-      CurrentTime);
+
+    if ( options.own_selection != 1 ) { // no point if we already own it...
+      if (options.cbh8) {
+        // in CBH8 mode, never let the CLIPBOARD have a different value than
+        // the cut buffer.  Do not bother with OwnSelectionIfDiffers() here
+        // (just own it now).
+        if (XtOwnSelection(box, options.selection,
+            0, //XtLastTimestampProcessed(dpy),
+            ConvertSelection, LoseSelection, NULL) == True) {
+          if (options.debug)
+            printf("CBH8: CLIPBOARD selection owned\n");
+          options.own_selection = 1;
+        }
+        else
+          printf("WARNING: Unable to own selection!\n");
+      } else {
+        XtGetSelectionValue(box, selection, XInternAtom(dpy, "UTF8_STRING", False),
+          OwnSelectionIfDiffers, NULL,
+          CurrentTime);
+      }
+    }
+
   }
 
   XFree(value);
@@ -216,6 +243,33 @@ static void SelectionReceived(Widget w, XtPointer client_data, Atom *selection,
   int length = *received_length;
   
   if (*type != 0 && *type != XT_CONVERT_FAIL) {
+
+    //
+    // in cbh8 mode, we poll either selection.
+    //
+    //   here we differentiate which one we are getting...
+    //
+    int   primary   = 0;
+    int   clipboard = 0;
+    char *selectstr = NULL;
+          selectstr = XGetAtomName(dpy, *selection);
+    if ( strcmp(selectstr, "CLIPBOARD") == 0 ) {
+      clipboard = 1;
+    } else {
+      primary = 1;
+    }
+    if (options.cbh8 && options.debug) {
+      printf("SelectionReceived (%s): ", (primary ? "PRIMARY" : "CLIPBOARD"));
+      PrintValue((char*)value, length);
+      printf("\n");
+    }
+  
+    if ( options.cbh8 && clipboard && options.own_selection == 1 ) { // already own it...
+      if (selectstr) XFree(selectstr);
+      XFree(value);
+      return;
+    }
+
     if (length > 0 && ValueDiffers(value, length)) {
       if (options.debug) {
         printf("Selection changed: ");
@@ -236,10 +290,47 @@ static void SelectionReceived(Widget w, XtPointer client_data, Atom *selection,
              (char*)options.value,
              (int)(options.length),
              buffer );
-      
+
+      if (options.cbh8 && options.own_selection == 0) {
+        if (clipboard) {
+          //
+          // send an XSelectionClearEvent on PRIMARY to xterm(s) (etc.).  This
+          // makes other programs clear their current selection and defer to
+          // the new one...
+          //
+          if (XtOwnSelection(box, XInternAtom(dpy, "PRIMARY", 0), 0,
+                             ConvertSelection, LoseSelection, NULL) == True) {
+            if (options.debug) {
+              printf("CBH8: PRIMARY: own with immediate disown\n");
+            }
+            // it might be better to retain ownership and just not poll PRIMARY
+            // if we own PRIMARY...?  This is good enough to work well with
+            // xterm and firefox...
+            XtDisownSelection(box, XInternAtom(dpy, "PRIMARY", 0), 0);
+          } else {
+            printf("WARNING: Unable to own selection (PRIMARY)!\n");
+          }
+        } else { // primary
+          // in CBH8 mode, never let the CLIPBOARD have a different value than
+          // the PRIMARY selection.  Skip OwnSelectionIfDiffers() here (just
+          // own it now).
+          if (XtOwnSelection(box, options.selection,
+              0, //XtLastTimestampProcessed(dpy),
+              ConvertSelection, LoseSelection, NULL) == True) {
+            if (options.debug)
+              printf("CBH8: CLIPBOARD selection owned\n");
+            options.own_selection = 1;
+          }
+          else
+            printf("WARNING: Unable to own selection!\n");
+        }
+      }
+
+      if (selectstr) XFree(selectstr);
       XtFree(value);
       return;
     }
+    if (selectstr) XFree(selectstr);
   }
   XtFree(value);
   
@@ -250,6 +341,19 @@ static void SelectionReceived(Widget w, XtPointer client_data, Atom *selection,
 // Called each <pause arg=500> milliseconds
 void timeout(XtPointer p, XtIntervalId* i)
 {
+  if (options.cbh8) {
+    // always monitor PRIMARY...
+    XtGetSelectionValue(box, XInternAtom(dpy, "PRIMARY", 0),
+                             XInternAtom(dpy, "UTF8_STRING", False),
+                             SelectionReceived, NULL, CurrentTime);
+    if (options.debug) {
+      printf("CBH8: polling PRIMARY\n");
+      printf("CBH8: %s CLIPBOARD%s\n",
+        (options.own_selection ? "no poll" : "polling" ),
+        (options.own_selection ? " (we own it)" : "" ) );
+    }
+  }
+
   if (options.own_selection)
     CheckBuffer();
   else {
@@ -306,6 +410,16 @@ int main(int argc, char* argv[])
     options.buttonup = 1;
   else
     options.buttonup = 0;
+  
+  if (strcmp(options.cbh8_option, "on") == 0)
+    if ( strcmp( options.selection_name, "CLIPBOARD") == 0 ) {
+      options.cbh8 = 1;
+    } else {
+      fprintf (stderr, "usage note: -cbh8 only works with -selection CLIPBOARD\n");
+      Syntax(argv[0]);
+    }
+  else
+    options.cbh8 = 0;
   
   if (strcmp(options.fork_option, "on") == 0) {
     options.fork = 1;

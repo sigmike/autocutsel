@@ -52,6 +52,7 @@ typedef struct {
   String  verbose_option;
   String  fork_option;
   String  buttonup_option;
+  String  cbh8_option;
   String  kill;
   int     pause;
   int     debug; 
@@ -62,6 +63,7 @@ typedef struct {
   int     length;
   int     own_selection;
   int     buttonup;
+  int     cbh8;
 } OptionsRec;
 
 extern Widget box;
