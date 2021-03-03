@@ -91,7 +91,7 @@ Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
     
     XmuConvertStandardSelection(w, req->time, selection, target, type,
         &std_targets, &std_length, format);
-    *value = XtMalloc(sizeof(Atom)*(std_length + 4));
+    *value = XtMalloc(sizeof(Atom)*(std_length + 5));
     targetP = *(Atom**)value;
     atoms = targetP;
     *length = std_length + 5;
