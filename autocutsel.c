@@ -91,7 +91,7 @@ static void CloseStdFds()
     close (fd);
 }
 
-static RETSIGTYPE Terminate(int caught)
+static void Terminate(int caught)
 {
   exit (0);
 }
