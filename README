@@ -36,7 +36,7 @@ To build autocutsel:
  ./configure
  make
 
-If you downloaded autocutsel from CVS, you first have to run ./autogen.sh to
+If you downloaded autocutsel from git you first have to run ./bootstrap to
 build the configure script.
 
 If configure fails because it can't find X or Xaw libraries, you may have to
@@ -65,7 +65,7 @@ Any feedback is welcome.
 
 Michael Witrant <mike at lepton.fr>
 
-	
+
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
