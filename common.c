@@ -2,7 +2,7 @@
  * autocutsel by Michael Witrant <mike @ lepton . fr>
  * Manipulates the cutbuffer and the selection
  * Copyright (c) 2001-2006 Michael Witrant.
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,9 +19,9 @@
  *
  * This program is distributed under the terms
  * of the GNU General Public License (read the COPYING file)
- * 
+ *
  */
- 
+
 #include "common.h"
 
 Widget box;
@@ -35,7 +35,7 @@ void PrintValue(char *value, int length)
 {
   unsigned char c;
   int len = 0;
-  
+
   putc('"', stdout);
   for (; length > 0; length--, value++) {
     c = (unsigned char)*value;
@@ -63,7 +63,7 @@ void PrintValue(char *value, int length)
   }
   putc('"', stdout);
 }
-  
+
 
 
 // called when someone requests the selection value
@@ -75,20 +75,20 @@ Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
   XSelectionRequestEvent* req =
     XtGetSelectionRequest(w, *selection, (XtRequestId)NULL);
   Atom utf8_string = XInternAtom(d, "UTF8_STRING", False);
-  
+
   if (options.debug) {
     printf("Window 0x%lx requested %s of selection %s.\n",
       req->requestor,
       XGetAtomName(d, *target),
       XGetAtomName(d, *selection));
   }
-  
+
   if (*target == XA_TARGETS(d)) {
     Atom *targetP, *atoms;
     XPointer std_targets;
     unsigned long std_length;
     int i;
-    
+
     XmuConvertStandardSelection(w, req->time, selection, target, type,
         &std_targets, &std_length, format);
     *value = XtMalloc(sizeof(Atom)*(std_length + 5));
@@ -104,7 +104,7 @@ Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
     XtFree((char*)std_targets);
     *type = XA_ATOM;
     *format = 32;
-    
+
     if (options.debug) {
       printf("Targets are: ");
       for (i=0; i<*length; i++)
@@ -114,7 +114,7 @@ Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
 
     return True;
   }
-  
+
   if (*target == utf8_string || *target == XA_STRING || *target == XA_TEXT(d)) {
     *type = *target;
     *value = XtMalloc((Cardinal) options.length);
@@ -127,10 +127,10 @@ Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
       PrintValue((char*)*value, *length);
       printf("\n");
     }
-   
+
     return True;
   }
-  
+
   if (*target == XA_LIST_LENGTH(d)) {
     CARD32 *temp = (CARD32 *) XtMalloc(sizeof(CARD32));
     *temp = 1L;
@@ -144,7 +144,7 @@ Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
 
     return True;
   }
-  
+
   if (*target == XA_LENGTH(d)) {
     CARD32 *temp = (CARD32 *) XtMalloc(sizeof(CARD32));
     *temp = options.length;
@@ -158,13 +158,13 @@ Boolean ConvertSelection(Widget w, Atom *selection, Atom *target,
 
     return True;
   }
-  
+
   if (XmuConvertStandardSelection(w, req->time, selection, target, type,
           (XPointer *)value, length, format)) {
     printf("Returning conversion of standard selection\n");
     return True;
   }
-   
+
   /* else */
   if (options.debug)
     printf("Target not supported\n");

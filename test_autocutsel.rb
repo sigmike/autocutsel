@@ -2,7 +2,7 @@
  * autocutsel by Michael Witrant <mike @ lepton . fr>
  * Manipulates the cutbuffer and the selection
  * Copyright (c) 2001-2006 Michael Witrant.
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,7 +19,7 @@
  *
  * This program is distributed under the terms
  * of the GNU General Public License (read the COPYING file)
- * 
+ *
 =end
 
 require 'test/unit'
@@ -32,15 +32,15 @@ class AutoCutSelTest < Test::Unit::TestCase
     result = nil if result == "Nobody owns the selection"
     result
   end
-  
+
   def get_buffer
     %x(./cutsel cut).chomp
   end
-  
+
   def set_buffer value
     system "./cutsel", "cut", value
   end
-  
+
   def set_selection value, selection = nil
     command = ["./cutsel", "sel", value]
     command += ["-s", selection] if selection
@@ -57,7 +57,7 @@ class AutoCutSelTest < Test::Unit::TestCase
       Process.waitpid pid
     end
   end
-  
+
   def run_autocutsel options = {}
     command = ["./autocutsel", "-pause", "1"]
     command += ["-s", options[:selection]] if options[:selection]
@@ -85,7 +85,7 @@ class AutoCutSelTest < Test::Unit::TestCase
       end
     end
   end
-  
+
   def get_targets
     %x(./cutsel targets).split("\n")[1..-1]
   end
@@ -95,14 +95,14 @@ class AutoCutSelTest < Test::Unit::TestCase
     set_buffer "cutbuffer value"
     assert_equal "cutbuffer value", get_buffer
   end
-  
+
   def test_cutsel_owns_selection
     set_selection "selection value" do
       assert_equal "selection value", get_selection
     end
     assert_nil get_selection
   end
-  
+
   def test_autocutsel_changes_buffer
     set_buffer "foo"
     run_autocutsel do
@@ -114,13 +114,13 @@ class AutoCutSelTest < Test::Unit::TestCase
     assert_equal "bar", get_buffer
     assert_nil get_selection
   end
-  
+
   def test_autocutsel_owns_selection
     run_autocutsel_and_make_it_own_selection "my value" do
       assert_equal "my value", get_selection
     end
   end
-  
+
   def test_autocutsel_targets
     run_autocutsel_and_make_it_own_selection do
       targets = get_targets
@@ -129,14 +129,14 @@ class AutoCutSelTest < Test::Unit::TestCase
       end
     end
   end
-  
+
   def test_default_selection
     run_autocutsel_and_make_it_own_selection __method__.to_s do
       assert_equal __method__.to_s, get_selection("CLIPBOARD")
       assert_nil get_selection("my_selection")
     end
   end
-  
+
   def test_primary_selection
     clipboard_value = get_selection("CLIPBOARD")
     run_autocutsel_and_make_it_own_selection __method__.to_s, "PRIMARY" do

@@ -2,7 +2,7 @@
  * autocutsel by Michael Witrant <mike @ lepton . fr>
  * Manipulates the cutbuffer and the selection
  * Copyright (c) 2001-2006 Michael Witrant.
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,7 +19,7 @@
  *
  * This program is distributed under the terms
  * of the GNU General Public License (read the COPYING file)
- * 
+ *
  */
 
 
@@ -81,7 +81,7 @@ static void PrintSelection(Widget w, XtPointer client_data, Atom *selection,
                            unsigned long *received_length, int *format)
 {
   Display* d = XtDisplay(w);
-  
+
   if (*type == 0)
     printf("Nobody owns the selection\n");
   else if (*type == XA_STRING)
@@ -100,7 +100,7 @@ static void TargetsReceived(Widget w, XtPointer client_data, Atom *selection,
   Display* d = XtDisplay(w);
   int i;
   Atom *atoms;
-  
+
   if (*type == 0)
     printf("No target received\n");
   else if (*type == XA_ATOM) {
@@ -120,7 +120,7 @@ static void LengthReceived(Widget w, XtPointer client_data, Atom *selection,
                            unsigned long *received_length, int *format)
 {
   Display* d = XtDisplay(w);
-  
+
   if (*type == 0)
     printf("No length received\n");
   else if (*type == XA_INTEGER) {
@@ -191,7 +191,7 @@ int main(int argc, char* argv[])
     options.debug = 1;
   else
     options.debug = 0;
-   
+
   if (strcmp(options.verbose_option, "on") == 0)
     options.verbose = 1;
   else
@@ -199,13 +199,13 @@ int main(int argc, char* argv[])
 
   if (options.debug || options.verbose)
     printf("cutsel v%s\n", VERSION);
-   
+
   options.value = NULL;
   options.length = 0;
 
   box = XtCreateManagedWidget("box", boxWidgetClass, top, NULL, 0);
   dpy = XtDisplay(top);
-   
+
   selection = XInternAtom(dpy, options.selection_name, 0);
   options.selection = selection;
   buffer = 0;

@@ -2,7 +2,7 @@
  * autocutsel by Michael Witrant <mike @ lepton . fr>
  * Manipulates the cutbuffer and the selection
  * Copyright (c) 2001-2006 Michael Witrant.
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,7 +19,7 @@
  *
  * This program is distributed under the terms
  * of the GNU General Public License (read the COPYING file)
- * 
+ *
  */
 
 #include "config.h"
@@ -54,8 +54,8 @@ typedef struct {
   String  buttonup_option;
   String  kill;
   int     pause;
-  int     debug; 
-  int     verbose; 
+  int     debug;
+  int     verbose;
   int     fork;
   Atom    selection;
   char*   value;

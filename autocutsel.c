@@ -2,15 +2,15 @@
  * autocutsel by Michael Witrant <mike @ lepton . fr>
  * Synchronizes the cutbuffer and the selection
  * Copyright (c) 2001-2006 Michael Witrant.
- * 
+ *
  * Most code taken from:
  * * clear-cut-buffers.c by "E. Jay Berkenbilt" <ejb @ ql . org>
  *   in this messages:
  *     http://boudicca.tux.org/mhonarc/ma-linux/2001-Feb/msg00824.html
- * 
+ *
  * * xcutsel.c by Ralph Swick, DEC/Project Athena
  *   from the XFree86 project: http://www.xfree86.org/
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -27,7 +27,7 @@
  *
  * This program is distributed under the terms
  * of the GNU General Public License (read the COPYING file)
- * 
+ *
  */
 
 #include "common.h"
@@ -55,7 +55,7 @@ int Syntax(char *call)
 {
   fprintf (stderr,
     "usage:  %s [-selection <name>] [-cutbuffer <number>]"
-    " [-pause <milliseconds>] [-debug] [-verbose] [-fork] [-buttonup]\n", 
+    " [-pause <milliseconds>] [-debug] [-verbose] [-fork] [-buttonup]\n",
     call);
   exit (1);
 }
@@ -156,21 +156,21 @@ static void OwnSelectionIfDiffers(Widget w, XtPointer client_data,
                                   unsigned long *received_length, int *format)
 {
   int length = *received_length;
-  
-  if (*type == 0 || 
-      *type == XT_CONVERT_FAIL || 
-      length == 0 || 
+
+  if (*type == 0 ||
+      *type == XT_CONVERT_FAIL ||
+      length == 0 ||
       ValueDiffers(value, length)) {
     if (options.debug)
       printf("Selection is out of date. Owning it\n");
-    
+
     if (options.verbose)
     {
       printf("cut -> sel: ");
       PrintValue(options.value, options.length);
       printf("\n");
     }
-    
+
     if (XtOwnSelection(box, options.selection,
         0, //XtLastTimestampProcessed(dpy),
         ConvertSelection, LoseSelection, NULL) == True) {
@@ -189,16 +189,16 @@ static void CheckBuffer()
 {
   char *value;
   int length;
-  
+
   value = XFetchBuffer(dpy, &length, buffer);
-  
+
   if (length > 0 && ValueDiffers(value, length)) {
     if (options.debug) {
       printf("Buffer changed: ");
       PrintValue(value, length);
       printf("\n");
     }
-    
+
     ChangeValue(value, length);
     XtGetSelectionValue(box, selection, XInternAtom(dpy, "UTF8_STRING", False),
       OwnSelectionIfDiffers, NULL,
@@ -214,7 +214,7 @@ static void SelectionReceived(Widget w, XtPointer client_data, Atom *selection,
                               unsigned long *received_length, int *format)
 {
   int length = *received_length;
-  
+
   if (*type != 0 && *type != XT_CONVERT_FAIL) {
     if (length > 0 && ValueDiffers(value, length)) {
       if (options.debug) {
@@ -222,7 +222,7 @@ static void SelectionReceived(Widget w, XtPointer client_data, Atom *selection,
         PrintValue((char*)value, length);
         printf("\n");
       }
-    
+
       ChangeValue((char*)value, length);
       if (options.verbose) {
         printf("sel -> cut: ");
@@ -231,18 +231,18 @@ static void SelectionReceived(Widget w, XtPointer client_data, Atom *selection,
       }
       if (options.debug)
         printf("Updating buffer\n");
-      
+
       XStoreBuffer(XtDisplay(w),
              (char*)options.value,
              (int)(options.length),
              buffer );
-      
+
       XtFree(value);
       return;
     }
   }
   XtFree(value);
-  
+
   // Unless a new selection value is found, check the buffer value
   CheckBuffer();
 }
@@ -269,7 +269,7 @@ void timeout(XtPointer p, XtIntervalId* i)
         SelectionReceived, NULL,
         CurrentTime);
   }
-  
+
   XtAppAddTimeOut(context, options.pause, timeout, 0);
 }
 
@@ -293,20 +293,20 @@ int main(int argc, char* argv[])
     options.debug = 1;
   else
     options.debug = 0;
-  
+
   if (strcmp(options.verbose_option, "on") == 0)
     options.verbose = 1;
   else
     options.verbose = 0;
-  
+
   if (options.debug || options.verbose)
     printf("autocutsel v%s\n", VERSION);
-   
+
   if (strcmp(options.buttonup_option, "on") == 0)
     options.buttonup = 1;
   else
     options.buttonup = 0;
-  
+
   if (strcmp(options.fork_option, "on") == 0) {
     options.fork = 1;
     options.verbose = 0;
@@ -342,14 +342,14 @@ int main(int argc, char* argv[])
   options.length = 0;
 
   options.own_selection = 0;
-   
+
   box = XtCreateManagedWidget("box", boxWidgetClass, top, NULL, 0);
   dpy = XtDisplay(top);
 
   selection = XInternAtom(dpy, options.selection_name, 0);
   options.selection = selection;
   buffer = 0;
-   
+
   options.value = XFetchBuffer(dpy, &options.length, buffer);
 
   XtAppAddTimeOut(context, options.pause, timeout, 0);
@@ -385,6 +385,6 @@ int main(int argc, char* argv[])
   XChangeProperty(dpy, XtWindow(top), atoms[_NET_WM_PID], atoms[CARDINAL], 32, PropModeReplace, (const unsigned char*)&pid, 1);
 
   XtAppMainLoop(context);
-  
+
   return 0;
 }
