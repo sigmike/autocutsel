@@ -39,7 +39,7 @@ v0.7.0: 2004-09-11
     If you want the old behavior, run "autocusel -selection PRIMARY"
 
 v0.6.2: 2002-06-03
-  - added a cutsel tools to change/retreive the cutbuffer
+  - added a cutsel tools to change/retrieve the cutbuffer
     or the selection
   - fixed minor bugs
 
