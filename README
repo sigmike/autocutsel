@@ -8,7 +8,7 @@ X servers use two schemes to copy text between applications. The first one
 application can store text. The other scheme is the selection and works
 differently. There may be many selections in a single server. An
 application does not copy data in a selection, it "owns" it. When
-another application wants to retreive the content of a selection, it
+another application wants to retrieve the content of a selection, it
 asks the owner.
 
 Recent desktop applications (GNOME, KDE, ...) use two selections: the

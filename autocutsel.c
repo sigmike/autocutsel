@@ -208,7 +208,7 @@ static void CheckBuffer()
   XFree(value);
 }
 
-// Called when the requested selection value is availiable
+// Called when the requested selection value is available
 static void SelectionReceived(Widget w, XtPointer client_data, Atom *selection,
                               Atom *type, XtPointer value,
                               unsigned long *received_length, int *format)
